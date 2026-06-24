@@ -15,6 +15,11 @@ miniAPI.onUpdate((payload) => {
   } else {
     document.documentElement.removeAttribute('data-board-theme');
   }
+  if (payload.pieceTheme && payload.pieceTheme !== 'classic') {
+    document.documentElement.setAttribute('data-piece-theme', payload.pieceTheme);
+  } else {
+    document.documentElement.removeAttribute('data-piece-theme');
+  }
   if (!!payload.flipped !== flipped) {
     flipped = !!payload.flipped;
     board.setFlipped(flipped);

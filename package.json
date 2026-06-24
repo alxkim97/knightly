@@ -1,7 +1,7 @@
 {
   "name": "knightly",
-  "version": "1.2.0",
-  "description": "Knightly v1.2.0 — interactive draggable/resizable pop-out mini board, undo/redo (Ctrl+Z/Ctrl+Y) vs computer, beginner-friendly defaults",
+  "version": "1.4.0",
+  "description": "Knightly v1.4.0 — drag-and-drop moves, premove vs computer, right-click arrow/circle annotations, fixed mini-board warping/drag, responsive layout, settings preview",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

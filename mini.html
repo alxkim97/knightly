@@ -7,36 +7,48 @@
 <link rel="stylesheet" href="src/styles.css" />
 <style>
   html, body { background: var(--bg); overflow: hidden; }
-  #mini-titlebar {
+  /* The outer ~8px is left with no app-region at all so Windows' native
+     resize-edge hit-testing (which runs at the literal window border for any
+     resizable frameless window, independent of app-region, and takes
+     priority over CSS app-region right at the edge) isn't fighting our drag
+     region — the previous 5px buffer was too close to that native hit zone
+     and dragging never engaged. Inset from that, #mini-wrap is the drag
+     handle; the board itself inside it is no-drag so clicking pieces still
+     works reliably (see the click-jitter note below). */
+  #mini-wrap {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px; bottom: 8px;
+    padding: 8px;
     -webkit-app-region: drag;
+  }
+  #mini-wrap .board { -webkit-app-region: no-drag; }
+
+  #mini-close {
+    -webkit-app-region: no-drag;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
     height: 22px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 6px 0 8px;
-    background: var(--bg-elev);
-    border-bottom: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--text-dim);
-    user-select: none;
-  }
-  #mini-close {
-    -webkit-app-region: no-drag;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 12px;
     cursor: pointer;
-    padding: 0 4px;
-    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
   }
-  #mini-close:hover { color: var(--bad); background: var(--bg-elev-2); }
-  #mini-wrap { width: 100vw; height: calc(100vh - 22px); padding: 4px; }
-  .board-wrap { width: 100%; height: 100%; max-width: none; aspect-ratio: auto; }
+  body:hover #mini-close { opacity: 0.85; }
+  #mini-close:hover { opacity: 1 !important; background: var(--bad); }
 </style>
 </head>
 <body>
-  <div id="mini-titlebar">
-    <span>Knightly</span>
-    <span id="mini-close" title="Close mini board">✕</span>
-  </div>
   <div id="mini-wrap"></div>
+  <span id="mini-close" title="Close mini board">✕</span>
   <script src="src/chessutil.js"></script>
   <script src="src/board.js"></script>
   <script src="src/mini.js"></script>

@@ -1,5 +1,5 @@
 const App = {
-  settings: { theme: 'dark', sound: true, boardTheme: 'classic' },
+  settings: { theme: 'dark', sound: true, boardTheme: 'classic', pieceTheme: 'classic', miniAlwaysOnTop: true },
   _progressCache: null,
   _viewCleanup: null,
 
@@ -66,6 +66,7 @@ const App = {
       lastMove: last ? { from: last.from, to: last.to } : null,
       theme: App.settings.theme,
       boardTheme: App.settings.boardTheme,
+      pieceTheme: App.settings.pieceTheme,
     });
   },
 
@@ -86,6 +87,12 @@ const App = {
     const theme = App.settings.boardTheme || 'classic';
     if (theme === 'classic') document.documentElement.removeAttribute('data-board-theme');
     else document.documentElement.setAttribute('data-board-theme', theme);
+  },
+
+  applyPieceTheme() {
+    const theme = App.settings.pieceTheme || 'classic';
+    if (theme === 'classic') document.documentElement.removeAttribute('data-piece-theme');
+    else document.documentElement.setAttribute('data-piece-theme', theme);
   },
 
   async saveSettings() {
@@ -175,6 +182,7 @@ async function init() {
   if (stored) App.settings = { ...App.settings, ...stored };
   App.applyTheme();
   App.applyBoardTheme();
+  App.applyPieceTheme();
   startClockDisplay();
 
   knightlyAPI.onMiniMove((payload) => {

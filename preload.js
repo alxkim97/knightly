@@ -72,4 +72,5 @@ contextBridge.exposeInMainWorld('knightlyAPI', {
   syncMiniBoard: (payload) => ipcRenderer.send('mini:sync', payload),
   onMiniMove: (callback) => ipcRenderer.on('mini:move-incoming', (_e, payload) => callback(payload)),
   onMiniClosed: (callback) => ipcRenderer.on('mini:closed', () => callback()),
+  setMiniAlwaysOnTop: (val) => ipcRenderer.send('mini:set-always-on-top', val),
 });

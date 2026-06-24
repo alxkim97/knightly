@@ -32,6 +32,7 @@ let miniWindow = null;
 let tray = null;
 let isQuitting = false;
 let lastMiniSync = null;
+let miniAlwaysOnTop = readJson(settingsPath, {}).miniAlwaysOnTop !== false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -58,6 +59,15 @@ function createWindow() {
       mainWindow.hide();
     }
   });
+  mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+function sendToMain(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+}
+
+function sendToMini(channel, payload) {
+  if (miniWindow && !miniWindow.isDestroyed()) miniWindow.webContents.send(channel, payload);
 }
 
 function createMiniWindow() {
@@ -70,7 +80,8 @@ function createMiniWindow() {
     icon: appIcon,
     frame: false,
     resizable: true,
-    alwaysOnTop: true,
+    useContentSize: true, // so getSize/setSize below measure the actual web content, not outer window bounds — otherwise any invisible OS chrome makes the rendered board subtly non-square
+    alwaysOnTop: miniAlwaysOnTop,
     skipTaskbar: true,
     backgroundColor: '#0f1115',
     webPreferences: {
@@ -81,16 +92,23 @@ function createMiniWindow() {
     },
   });
   miniWindow.setAspectRatio(1);
+  // setAspectRatio is advisory on some platforms/edge cases — force an exact
+  // square as a backstop so the board is never letterboxed mid-resize.
+  miniWindow.on('resize', () => {
+    if (!miniWindow || miniWindow.isDestroyed()) return;
+    const [w, h] = miniWindow.getContentSize();
+    if (w !== h) miniWindow.setContentSize(Math.max(w, h), Math.max(w, h));
+  });
   miniWindow.loadFile(path.join(__dirname, 'mini.html'));
   // The renderer may send its first 'mini:sync' before this window's page has
   // finished loading and registered its listener — that message would be
   // silently dropped. Replay the last known state once it's actually ready.
   miniWindow.webContents.once('did-finish-load', () => {
-    if (lastMiniSync && miniWindow) miniWindow.webContents.send('mini:update', lastMiniSync);
+    if (lastMiniSync) sendToMini('mini:update', lastMiniSync);
   });
   miniWindow.on('closed', () => {
     miniWindow = null;
-    if (mainWindow) mainWindow.webContents.send('mini:closed');
+    sendToMain('mini:closed');
   });
 }
 
@@ -106,34 +124,45 @@ ipcMain.handle('mini:toggle', () => {
 
 ipcMain.on('mini:sync', (_e, payload) => {
   lastMiniSync = payload;
-  if (miniWindow) miniWindow.webContents.send('mini:update', payload);
+  sendToMini('mini:update', payload);
 });
 
 ipcMain.on('mini:move', (_e, payload) => {
-  if (mainWindow) mainWindow.webContents.send('mini:move-incoming', payload);
+  sendToMain('mini:move-incoming', payload);
 });
 
 ipcMain.on('mini:close', () => {
-  if (miniWindow) miniWindow.close();
+  if (miniWindow && !miniWindow.isDestroyed()) miniWindow.close();
 });
+
+ipcMain.on('mini:set-always-on-top', (_e, val) => {
+  miniAlwaysOnTop = !!val;
+  if (miniWindow && !miniWindow.isDestroyed()) miniWindow.setAlwaysOnTop(miniAlwaysOnTop);
+});
+
+function showMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
+  else createWindow();
+}
 
 function createTray() {
   const trayIcon = appIcon.resize({ width: 16, height: 16 });
   tray = new Tray(trayIcon);
   tray.setToolTip('Knightly');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show Knightly', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    { label: 'Show Knightly', click: showMainWindow },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
   ]));
-  tray.on('click', () => { mainWindow.show(); mainWindow.focus(); });
+  tray.on('click', showMainWindow);
 }
 
 Menu.setApplicationMenu(null);
+if (process.platform === 'win32') app.setAppUserModelId('com.apm.knightly');
 app.whenReady().then(() => {
   createWindow();
   createTray();
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin' && isQuitting) app.quit(); });
-app.on('activate', () => { if (mainWindow) { mainWindow.show(); } else { createWindow(); } });
+app.on('activate', showMainWindow);
 app.on('before-quit', () => { isQuitting = true; });

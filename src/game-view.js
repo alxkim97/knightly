@@ -15,11 +15,11 @@ function renderPlaySetup(container) {
   container.appendChild(el('h1', null, 'Play'));
   container.appendChild(el('p', 'sub', 'Choose how you want to play.'));
 
+  const row = el('div', 'panel-row');
+
   let chosenTime = 'none';
   const timeWrap = el('div', 'card');
   timeWrap.style.cursor = 'default';
-  timeWrap.style.maxWidth = '480px';
-  timeWrap.style.marginBottom = '16px';
   timeWrap.appendChild(el('div', 'card-title', 'Time Control'));
   const timeSelect = el('div', 'diff-select');
   timeSelect.style.marginTop = '10px';
@@ -33,26 +33,18 @@ function renderPlaySetup(container) {
     timeSelect.appendChild(opt);
   });
   timeWrap.appendChild(timeSelect);
-  container.appendChild(timeWrap);
-
-  const grid = el('div', 'card-grid');
+  row.appendChild(timeWrap);
 
   const pvpCard = el('div', 'card');
   pvpCard.appendChild(el('span', 'card-icon', '♞'));
   pvpCard.appendChild(el('div', 'card-title', 'Pass & Play'));
   pvpCard.appendChild(el('div', 'card-desc', 'Two players, one device. Take turns making moves on the same board.'));
   pvpCard.addEventListener('click', () => App.navigate('game', { mode: 'pvp', timeControlMin: chosenTime === 'none' ? null : Number(chosenTime) }));
-  grid.appendChild(pvpCard);
-
-  container.appendChild(grid);
-  const vsComputerHeading = el('h2', null, 'vs Computer');
-  vsComputerHeading.style.marginTop = '28px';
-  container.appendChild(vsComputerHeading);
+  row.appendChild(pvpCard);
 
   const diffWrap = el('div', 'card');
   diffWrap.style.cursor = 'default';
-  diffWrap.style.maxWidth = '480px';
-  diffWrap.appendChild(el('div', 'card-title', 'Difficulty'));
+  diffWrap.appendChild(el('div', 'card-title', 'vs Computer — Difficulty'));
   const diffSelect = el('div', 'diff-select');
   diffSelect.style.marginTop = '10px';
   let chosenDiff = 'beginner';
@@ -95,11 +87,9 @@ function renderPlaySetup(container) {
     });
   });
   diffWrap.appendChild(startBtn);
+  row.appendChild(diffWrap);
 
-  const wrap2 = el('div', 'card-grid');
-  wrap2.style.marginTop = '14px';
-  wrap2.appendChild(diffWrap);
-  container.appendChild(wrap2);
+  container.appendChild(row);
 }
 
 function buildCapturedRows(history) {
@@ -180,12 +170,20 @@ function renderGame(container, params) {
   let viewIndex = null; // null = live position; otherwise number of moves shown
   let resultRecorded = false;
   let undonePairs = []; // each entry: [moveObj, moveObj?] in chronological order, for Redo
+  let pendingPremove = null;
 
   let state = window.chessEngine.reset(GAME_ID);
   const board = new ChessBoard(boardWrap, {
     interactive: true,
     flipped,
     onUserMove: handleUserMove,
+    premoveColor: params.mode === 'ai' ? playerColor : null,
+    onPremove: (from, to, promotion) => {
+      pendingPremove = { from, to, promotion };
+      board.showPremove(from, to);
+      showToast(`Premove queued: ${from}–${to}. Right-click to cancel.`);
+    },
+    onPremoveClear: () => { pendingPremove = null; },
   });
   board.render(state);
   App.syncMiniBoard(state, flipped);
@@ -397,6 +395,12 @@ function renderGame(container, params) {
       }
       refreshUI();
       checkGameEndFromState();
+      if (!state.isGameOver && state.turn === playerColor && pendingPremove) {
+        const pm = pendingPremove;
+        pendingPremove = null;
+        board.clearPremove();
+        handleUserMove(pm.from, pm.to, pm.promotion);
+      }
     }).catch(() => { aiThinking = false; refreshUI(); showToast('AI move failed'); });
   }
 
@@ -505,6 +509,7 @@ function renderGame(container, params) {
     resultRecorded = false;
     viewIndex = null;
     undonePairs = [];
+    pendingPremove = null;
     whiteMs = params.timeControlMin ? params.timeControlMin * 60 * 1000 : null;
     blackMs = params.timeControlMin ? params.timeControlMin * 60 * 1000 : null;
     state = window.chessEngine.reset(GAME_ID);
