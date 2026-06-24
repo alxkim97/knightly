@@ -1,0 +1,139 @@
+const { app, BrowserWindow, nativeImage, Menu, Tray, ipcMain } = require('electron');
+const path = require('path');
+const fs = require('fs');
+
+const userDataDir = app.getPath('userData');
+const settingsPath = path.join(userDataDir, 'settings.json');
+const progressPath = path.join(userDataDir, 'progress.json');
+
+function readJson(filePath, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+ipcMain.handle('settings:get', () => readJson(settingsPath, null));
+ipcMain.handle('settings:set', (_e, data) => { writeJson(settingsPath, data); return true; });
+ipcMain.handle('progress:get', () => readJson(progressPath, null));
+ipcMain.handle('progress:set', (_e, data) => { writeJson(progressPath, data); return true; });
+ipcMain.handle('app:getVersion', () => app.getVersion());
+
+const appIcon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png'));
+
+let mainWindow = null;
+let miniWindow = null;
+let tray = null;
+let isQuitting = false;
+let lastMiniSync = null;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    minWidth: 960,
+    minHeight: 640,
+    title: 'Knightly',
+    icon: appIcon,
+    autoHideMenuBar: true,
+    backgroundColor: '#0f1115',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // preload needs require('chess.js'); page itself still has no Node access
+    },
+  });
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+}
+
+function createMiniWindow() {
+  miniWindow = new BrowserWindow({
+    width: 260,
+    height: 260,
+    minWidth: 160,
+    minHeight: 160,
+    title: 'Knightly — Mini Board',
+    icon: appIcon,
+    frame: false,
+    resizable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: '#0f1115',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-mini.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+  miniWindow.setAspectRatio(1);
+  miniWindow.loadFile(path.join(__dirname, 'mini.html'));
+  // The renderer may send its first 'mini:sync' before this window's page has
+  // finished loading and registered its listener — that message would be
+  // silently dropped. Replay the last known state once it's actually ready.
+  miniWindow.webContents.once('did-finish-load', () => {
+    if (lastMiniSync && miniWindow) miniWindow.webContents.send('mini:update', lastMiniSync);
+  });
+  miniWindow.on('closed', () => {
+    miniWindow = null;
+    if (mainWindow) mainWindow.webContents.send('mini:closed');
+  });
+}
+
+ipcMain.handle('mini:toggle', () => {
+  if (miniWindow) {
+    miniWindow.close();
+    miniWindow = null;
+    return { open: false };
+  }
+  createMiniWindow();
+  return { open: true };
+});
+
+ipcMain.on('mini:sync', (_e, payload) => {
+  lastMiniSync = payload;
+  if (miniWindow) miniWindow.webContents.send('mini:update', payload);
+});
+
+ipcMain.on('mini:move', (_e, payload) => {
+  if (mainWindow) mainWindow.webContents.send('mini:move-incoming', payload);
+});
+
+ipcMain.on('mini:close', () => {
+  if (miniWindow) miniWindow.close();
+});
+
+function createTray() {
+  const trayIcon = appIcon.resize({ width: 16, height: 16 });
+  tray = new Tray(trayIcon);
+  tray.setToolTip('Knightly');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Show Knightly', click: () => { mainWindow.show(); mainWindow.focus(); } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
+  ]));
+  tray.on('click', () => { mainWindow.show(); mainWindow.focus(); });
+}
+
+Menu.setApplicationMenu(null);
+app.whenReady().then(() => {
+  createWindow();
+  createTray();
+});
+app.on('window-all-closed', () => { if (process.platform !== 'darwin' && isQuitting) app.quit(); });
+app.on('activate', () => { if (mainWindow) { mainWindow.show(); } else { createWindow(); } });
+app.on('before-quit', () => { isQuitting = true; });

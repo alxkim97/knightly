@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self'; connect-src 'self' https://lichess.org;" />
+<title>Knightly</title>
+<link rel="icon" href="assets/icon.png" />
+<link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <div id="titlebar">
+    <span class="tb-icon">&#9822;</span>
+    <span class="tb-title">Knightly</span>
+    <span id="clock-display" class="tb-clock"></span>
+  </div>
+
+  <nav id="navbar">
+    <button class="nav-btn active" data-view="home">Home</button>
+    <button class="nav-btn" data-view="play-setup">Play</button>
+    <button class="nav-btn" data-view="puzzles-hub">Puzzles</button>
+    <button class="nav-btn" data-view="learn-hub">Learn</button>
+    <button class="nav-btn" data-view="settings">Settings</button>
+  </nav>
+
+  <main id="view"></main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="src/chessutil.js"></script>
+  <script src="src/sound.js"></script>
+  <script src="src/board.js"></script>
+  <script src="src/ai.js"></script>
+  <script src="src/game-view.js"></script>
+  <script src="src/puzzles.js"></script>
+  <script src="src/lessons.js"></script>
+  <script src="src/settings.js"></script>
+  <script src="src/history.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

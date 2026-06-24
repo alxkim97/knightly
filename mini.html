@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+<title>Knightly — Mini Board</title>
+<link rel="stylesheet" href="src/styles.css" />
+<style>
+  html, body { background: var(--bg); overflow: hidden; }
+  #mini-titlebar {
+    -webkit-app-region: drag;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 6px 0 8px;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    user-select: none;
+  }
+  #mini-close {
+    -webkit-app-region: no-drag;
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 4px;
+  }
+  #mini-close:hover { color: var(--bad); background: var(--bg-elev-2); }
+  #mini-wrap { width: 100vw; height: calc(100vh - 22px); padding: 4px; }
+  .board-wrap { width: 100%; height: 100%; max-width: none; aspect-ratio: auto; }
+</style>
+</head>
+<body>
+  <div id="mini-titlebar">
+    <span>Knightly</span>
+    <span id="mini-close" title="Close mini board">✕</span>
+  </div>
+  <div id="mini-wrap"></div>
+  <script src="src/chessutil.js"></script>
+  <script src="src/board.js"></script>
+  <script src="src/mini.js"></script>
+</body>
+</html>

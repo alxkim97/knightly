@@ -1,0 +1,62 @@
+{
+  "name": "knightly",
+  "version": "1.2.0",
+  "description": "Knightly v1.2.0 — interactive draggable/resizable pop-out mini board, undo/redo (Ctrl+Z/Ctrl+Y) vs computer, beginner-friendly defaults",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "fetch-puzzles": "node scripts/fetch-puzzles.js",
+    "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win --x64",
+    "build:win": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win --x64"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chess.js": "^1.0.0-beta.8"
+  },
+  "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.apm.knightly",
+    "productName": "Knightly",
+    "copyright": "Copyright © 2026 Alex · APm R&D",
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-mini.js",
+      "index.html",
+      "mini.html",
+      "src/**/*",
+      "data/**/*",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Knightly"
+    }
+  }
+}
