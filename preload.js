@@ -11,7 +11,6 @@ function getGame(id) {
 function serialize(game) {
   return {
     fen: game.fen(),
-    pgn: game.pgn(),
     turn: game.turn(),
     history: game.history({ verbose: true }),
     isCheck: game.isCheck(),
@@ -48,16 +47,6 @@ contextBridge.exposeInMainWorld('chessEngine', {
     const game = getGame(id);
     game.undo();
     return serialize(game);
-  },
-  legalMovesFrom: (id, square) => getGame(id).moves({ square, verbose: true }),
-  loadPgn: (id, pgn) => {
-    const game = getGame(id);
-    try {
-      game.loadPgn(pgn);
-      return serialize(game);
-    } catch {
-      return null;
-    }
   },
   destroy: (id) => { games.delete(id); },
 });
