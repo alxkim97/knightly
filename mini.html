@@ -7,6 +7,23 @@
 <link rel="stylesheet" href="src/styles.css" />
 <style>
   html, body { background: var(--bg); overflow: hidden; }
+  /* Electron's native resize (see main.js's 'resize' handler) snaps the
+     window back to square shortly after the user releases the drag, but
+     during the live drag itself the OS reports a stream of intermediate,
+     non-square sizes — if the board just filled that rectangle it would
+     visibly stretch/warp every frame. min(100vw, 100vh) sizes #mini-square
+     to the largest square that fits the *current* (possibly transient)
+     window shape, recomputed by the browser on every paint with no IPC
+     round trip, so the board itself is always square and just letterboxes
+     briefly instead of warping. */
+  #mini-square {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(100vw, 100vh);
+    height: min(100vw, 100vh);
+    transform: translate(-50%, -50%);
+  }
   /* The outer ~8px is left with no app-region at all so Windows' native
      resize-edge hit-testing (which runs at the literal window border for any
      resizable frameless window, independent of app-region, and takes
@@ -23,11 +40,18 @@
   }
   #mini-wrap .board { -webkit-app-region: no-drag; }
 
-  #mini-close {
+  /* Anchored to the real window corner (not the inscribed square) so it
+     stays put even while #mini-square is letterboxing mid-resize. */
+  #mini-toolbar {
     -webkit-app-region: no-drag;
     position: absolute;
     top: 6px;
     right: 6px;
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+  }
+  #mini-pin, #mini-close {
     width: 22px;
     height: 22px;
     display: flex;
@@ -39,16 +63,22 @@
     font-size: 12px;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.15s;
-    z-index: 10;
+    transition: opacity 0.15s, background 0.15s;
   }
-  body:hover #mini-close { opacity: 0.85; }
+  body:hover #mini-pin, body:hover #mini-close { opacity: 0.85; }
   #mini-close:hover { opacity: 1 !important; background: var(--bad); }
+  #mini-pin:hover { opacity: 1 !important; }
+  #mini-pin.pinned { opacity: 0.85; background: var(--accent); }
 </style>
 </head>
 <body>
-  <div id="mini-wrap"></div>
-  <span id="mini-close" title="Close mini board">✕</span>
+  <div id="mini-square">
+    <div id="mini-wrap"></div>
+  </div>
+  <div id="mini-toolbar">
+    <span id="mini-pin" title="Keep on top">📌</span>
+    <span id="mini-close" title="Close mini board">✕</span>
+  </div>
   <script src="src/chessutil.js"></script>
   <script src="src/board.js"></script>
   <script src="src/mini.js"></script>

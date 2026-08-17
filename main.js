@@ -71,7 +71,7 @@ function sendToMini(channel, payload) {
 }
 
 function createMiniWindow() {
-  miniWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 260,
     height: 260,
     minWidth: 160,
@@ -91,24 +91,30 @@ function createMiniWindow() {
       sandbox: false,
     },
   });
-  miniWindow.setAspectRatio(1);
+  miniWindow = win;
+  win.setAspectRatio(1);
   // setAspectRatio is advisory on some platforms/edge cases — force an exact
   // square as a backstop so the board is never letterboxed mid-resize.
-  miniWindow.on('resize', () => {
-    if (!miniWindow || miniWindow.isDestroyed()) return;
-    const [w, h] = miniWindow.getContentSize();
-    if (w !== h) miniWindow.setContentSize(Math.max(w, h), Math.max(w, h));
+  win.on('resize', () => {
+    if (win.isDestroyed()) return;
+    const [w, h] = win.getContentSize();
+    if (w !== h) win.setContentSize(Math.max(w, h), Math.max(w, h));
   });
-  miniWindow.loadFile(path.join(__dirname, 'mini.html'));
+  win.loadFile(path.join(__dirname, 'mini.html'));
   // The renderer may send its first 'mini:sync' before this window's page has
   // finished loading and registered its listener — that message would be
   // silently dropped. Replay the last known state once it's actually ready.
-  miniWindow.webContents.once('did-finish-load', () => {
+  win.webContents.once('did-finish-load', () => {
     if (lastMiniSync) sendToMini('mini:update', lastMiniSync);
+    sendToMini('mini:pin-state', miniAlwaysOnTop);
   });
-  miniWindow.on('closed', () => {
-    miniWindow = null;
-    sendToMain('mini:closed');
+  win.on('closed', () => {
+    // A stale 'closed' event from a previous window instance (e.g. a fast
+    // close-then-reopen) must not clobber a newer window's reference.
+    if (miniWindow === win) {
+      miniWindow = null;
+      sendToMain('mini:closed');
+    }
   });
 }
 
@@ -138,6 +144,23 @@ ipcMain.on('mini:close', () => {
 ipcMain.on('mini:set-always-on-top', (_e, val) => {
   miniAlwaysOnTop = !!val;
   if (miniWindow && !miniWindow.isDestroyed()) miniWindow.setAlwaysOnTop(miniAlwaysOnTop);
+  sendToMini('mini:pin-state', miniAlwaysOnTop);
+});
+
+// Pin toggle lives on the mini window's own toolbar (see mini.js) as a
+// quicker path than opening Settings — mirrors 'mini:set-always-on-top'
+// above but is initiated from the mini window itself, so it also has to
+// persist the change (Settings' own toggle instead relies on the renderer
+// writing its whole settings object back via settings:set) and tell the
+// main window to keep its cached copy in sync.
+ipcMain.handle('mini:toggle-pin', () => {
+  miniAlwaysOnTop = !miniAlwaysOnTop;
+  const current = readJson(settingsPath, {}) || {};
+  current.miniAlwaysOnTop = miniAlwaysOnTop;
+  writeJson(settingsPath, current);
+  if (miniWindow && !miniWindow.isDestroyed()) miniWindow.setAlwaysOnTop(miniAlwaysOnTop);
+  sendToMain('mini:pin-changed', miniAlwaysOnTop);
+  return miniAlwaysOnTop;
 });
 
 function showMainWindow() {

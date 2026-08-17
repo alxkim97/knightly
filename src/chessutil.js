@@ -10,12 +10,6 @@ const PIECE_GLYPH = {
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-function squareToRowCol(square) {
-  const file = FILES.indexOf(square[0]);
-  const rank = parseInt(square[1], 10);
-  return { row: 8 - rank, col: file };
-}
-
 function showToast(msg, ms = 2200) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -29,28 +23,4 @@ function el(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
-}
-
-function pieceName(type) {
-  return { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' }[type] || type;
-}
-
-// Lightweight FEN piece-placement parser, used by the mini pop-out board
-// (which only needs to display a position, not compute legal moves, so it
-// doesn't need a full chess.js instance).
-function parseFenBoard(fen) {
-  const placement = fen.split(' ')[0];
-  const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
-  return placement.split('/').map((rowStr, r) => {
-    const row = [];
-    for (const ch of rowStr) {
-      if (/[1-8]/.test(ch)) {
-        for (let i = 0; i < Number(ch); i++) row.push(null);
-      } else {
-        const color = ch === ch.toUpperCase() ? 'w' : 'b';
-        row.push({ type: ch.toLowerCase(), color, square: FILES[row.length] + ranks[r] });
-      }
-    }
-    return row;
-  });
 }

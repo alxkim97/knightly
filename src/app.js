@@ -192,6 +192,15 @@ async function init() {
     App.miniBoardOpen = false;
     if (App._miniClosedHandler) App._miniClosedHandler();
   });
+  // The pin button on the mini board's own toolbar (src/mini.js) can flip
+  // this setting too — keep the cached copy (and the Settings toggle, if
+  // it's the currently open view) in sync so it doesn't look stale/wrong
+  // next time either is shown.
+  knightlyAPI.onMiniPinChanged((val) => {
+    App.settings.miniAlwaysOnTop = val;
+    const checkbox = document.getElementById('mini-always-on-top-toggle');
+    if (checkbox) checkbox.checked = val;
+  });
 
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => App.navigate(btn.dataset.view));

@@ -31,3 +31,10 @@ miniAPI.onUpdate((payload) => {
 });
 
 document.getElementById('mini-close').addEventListener('click', () => miniAPI.closeWindow());
+
+const pinBtn = document.getElementById('mini-pin');
+pinBtn.addEventListener('click', async () => {
+  const pinned = await miniAPI.togglePin();
+  pinBtn.classList.toggle('pinned', pinned);
+});
+miniAPI.onPinState((pinned) => pinBtn.classList.toggle('pinned', pinned));

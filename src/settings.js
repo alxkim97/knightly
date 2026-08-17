@@ -16,13 +16,14 @@ function buildSwatchRow(items, currentKey, onPick) {
   return row;
 }
 
-function buildToggleRow(label, checked, onChange) {
+function buildToggleRow(label, checked, onChange, inputId) {
   const row = el('div', 'settings-row');
   row.appendChild(el('span', null, label));
   const wrapLabel = el('label', 'switch');
   const input = el('input');
   input.type = 'checkbox';
   input.checked = checked;
+  if (inputId) input.id = inputId;
   wrapLabel.append(input, el('span', 'slider'));
   row.appendChild(wrapLabel);
   input.addEventListener('change', () => onChange(input.checked));
@@ -99,7 +100,7 @@ function renderSettings(container) {
     App.settings.miniAlwaysOnTop = checked;
     App.saveSettings();
     knightlyAPI.setMiniAlwaysOnTop(checked);
-  }));
+  }, 'mini-always-on-top-toggle'));
   row.appendChild(miniGroup);
 
   const shortcutGroup = el('div', 'settings-group');

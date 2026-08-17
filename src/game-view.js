@@ -171,6 +171,7 @@ function renderGame(container, params) {
   let resultRecorded = false;
   let undonePairs = []; // each entry: [moveObj, moveObj?] in chronological order, for Redo
   let pendingPremove = null;
+  let moveEpoch = 0; // bumped whenever the game is reset, to invalidate stale in-flight AI replies
 
   let state = window.chessEngine.reset(GAME_ID);
   const board = new ChessBoard(boardWrap, {
@@ -378,11 +379,13 @@ function renderGame(container, params) {
   }
 
   function maybeTriggerAiMove() {
-    if (params.mode !== 'ai' || state.isGameOver) return;
+    if (params.mode !== 'ai' || state.isGameOver || aiThinking) return;
     if (state.turn === playerColor) return;
     aiThinking = true;
+    const epoch = moveEpoch;
     refreshUI();
     ai.pickMove(state.fen, state.legalMoves).then((mv) => {
+      if (epoch !== moveEpoch) return; // game was reset while this was in flight; discard
       aiThinking = false;
       if (!mv) { refreshUI(); return; }
       const result = window.chessEngine.move(GAME_ID, mv);
@@ -401,7 +404,10 @@ function renderGame(container, params) {
         board.clearPremove();
         handleUserMove(pm.from, pm.to, pm.promotion);
       }
-    }).catch(() => { aiThinking = false; refreshUI(); showToast('AI move failed'); });
+    }).catch(() => {
+      if (epoch !== moveEpoch) return;
+      aiThinking = false; refreshUI(); showToast('AI move failed');
+    });
   }
 
   function playMoveSound(s) {
@@ -413,6 +419,10 @@ function renderGame(container, params) {
 
   function handleUserMove(from, to, promotion) {
     if (viewIndex !== null) return; // read-only while reviewing past moves
+    // The pop-out mini board is always interactive regardless of whose turn
+    // it is (see mini.js), so this is the real gate against playing the
+    // computer's moves for it via that window.
+    if (params.mode === 'ai' && state.turn !== playerColor) return;
     const result = window.chessEngine.move(GAME_ID, { from, to, promotion });
     if (!result) { showToast('Illegal move'); return; }
     state = result;
@@ -483,12 +493,14 @@ function renderGame(container, params) {
     suggestBtn.textContent = 'Thinking…';
     try {
       if (!advisor) {
-        advisor = new StockfishAI();
-        await advisor.setDifficulty('hard');
+        const candidate = new StockfishAI();
+        await candidate.setDifficulty('hard');
+        advisor = candidate; // only cache once init actually succeeded
       }
       const uci = await advisor.getBestMove(viewIndex === null ? state.fen : getPositionAt(viewIndex).fen);
       if (uci) board.showSuggestion(uci.slice(0, 2), uci.slice(2, 4));
     } catch {
+      if (advisor) { advisor.terminate(); advisor = null; }
       showToast('Could not get a suggestion');
     }
     suggestBtn.disabled = false;
@@ -510,6 +522,8 @@ function renderGame(container, params) {
     viewIndex = null;
     undonePairs = [];
     pendingPremove = null;
+    moveEpoch++;
+    aiThinking = false;
     whiteMs = params.timeControlMin ? params.timeControlMin * 60 * 1000 : null;
     blackMs = params.timeControlMin ? params.timeControlMin * 60 * 1000 : null;
     state = window.chessEngine.reset(GAME_ID);
