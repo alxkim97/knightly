@@ -1,6 +1,6 @@
 {
   "name": "knightly",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Knightly — learn chess, solve puzzles and play the computer. Web app (PWA) and Windows desktop app from one codebase.",
   "main": "main.js",
   "scripts": {
@@ -10,13 +10,14 @@
     "electron": "electron .",
     "electron:dev": "electron . --dev",
     "start": "vite build && electron .",
-    "electron:build": "vite build && set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win --x64",
+    "electron:build": "vite build && set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win --x64 --publish never",
     "build:win": "npm run electron:build",
     "fetch-puzzles": "node scripts/fetch-puzzles.js",
     "build-lessons": "node scripts/build-lessons.js",
     "build-icon": "node scripts/build-icon.js",
     "build-course": "node scripts/build-course.js",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "release": "npm run electron:build && node scripts/publish-release.js"
   },
   "engines": {
     "node": ">=18"
@@ -69,6 +70,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Knightly"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "alxkim97",
+      "repo": "knightly"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

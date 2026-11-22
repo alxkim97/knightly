@@ -1,8 +1,9 @@
 import { html, esc, showToast } from '../util.js';
 import * as Sync from '../sync.js';
+import { Updates } from '../updates.js';
 import { App } from '../app.js';
 import { Sound } from '../sound.js';
-import { platform } from '../platform.js';
+import { platform, isDesktop } from '../platform.js';
 import { lookPicker } from '../look-picker.js';
 import { pageTop } from './common.js';
 
@@ -59,6 +60,7 @@ export async function renderSettings(container) {
     <div class="kv"><span>Close a pop-up</span><b>Esc</b></div></section>`));
 
   grid.appendChild(accountCard());
+  grid.appendChild(updatesCard());
 
   const data = html(`<section class="card pad"><div class="blk-h">Progress</div>
     <p class="small muted">Resets solved puzzles, finished lessons, XP, your record and history. Settings stay. When signed in, this resets every synced device.</p>
@@ -153,5 +155,38 @@ function accountCard() {
     if (st.signedIn && line) { const [text, tone] = statusText(st); line.textContent = text; line.className = `status-line small ${tone}`; }
     else if (!!line !== st.signedIn) draw(st);
   });
+  return card;
+}
+
+// App updates: check now, see progress, restart into the new version.
+function updateText(st) {
+  const when = st.checkedAt ? ` Checked ${new Date(st.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : '';
+  switch (st.state) {
+    case 'checking': return ['Checking for updates…', ''];
+    case 'current': return [`You're up to date.${when}`, 'good'];
+    case 'downloading': return [`Downloading ${st.version ? 'version ' + st.version : 'the update'}… ${st.percent || 0}%`, ''];
+    case 'ready': return [`${st.version ? 'Version ' + st.version : 'A new version'} is ready.`, 'good'];
+    case 'error': return [`Couldn't check for updates: ${st.error || 'unknown error'}`, 'bad'];
+    case 'dev': return [isDesktop ? 'Updates are off in development builds.' : "Updates aren't available in this session. Open the installed app to get them.", ''];
+    default: return [isDesktop ? 'Checks automatically in the background.' : 'Checks automatically each time you open the app.', ''];
+  }
+}
+
+function updatesCard() {
+  const card = html('<section class="card pad upd"><div class="blk-h">App updates</div><div class="upd-body"></div></section>');
+  const body = card.querySelector('.upd-body');
+  const draw = (st = Updates.status) => {
+    const [text, tone] = updateText(st);
+    const busy = st.state === 'checking' || st.state === 'downloading';
+    body.innerHTML = `<div class="kv"><span>Version</span><b id="upd-ver">…</b></div>
+      <p class="status-line small ${tone}">${esc(text)}</p>
+      <div class="btn-row">${st.state === 'ready' ? `<button type="button" class="btn sm" id="upd-install">${isDesktop ? 'Restart to update' : 'Update now'}</button>` : ''}<button type="button" class="btn sm ghost" id="upd-check" ${busy ? 'disabled' : ''}>Check for updates</button></div>`;
+    platform.getVersion().then((v) => { const n = body.querySelector('#upd-ver'); if (n) n.textContent = `v${v}`; });
+    body.querySelector('#upd-check').addEventListener('click', () => Updates.check());
+    const inst = body.querySelector('#upd-install');
+    if (inst) inst.addEventListener('click', () => Updates.install());
+  };
+  draw();
+  const off = Updates.onChange((st) => { if (!card.isConnected) { off(); return; } draw(st); });
   return card;
 }

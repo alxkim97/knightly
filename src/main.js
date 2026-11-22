@@ -10,6 +10,7 @@ import './styles.css';
 import { App, buildShell } from './app.js';
 import { platform } from './platform.js';
 import * as Sync from './sync.js';
+import { Updates } from './updates.js';
 import * as Analysis from './analysis.js';
 import { engine } from './engine.js';
 import { ChessBoard } from './board.js';
@@ -63,7 +64,8 @@ async function registerServiceWorker() {
     const { registerSW } = await import('virtual:pwa-register');
     const updateSW = registerSW({
       immediate: true,
-      onNeedRefresh() { pendingUpdate = () => updateSW(true); maybeApplyUpdate(); },
+      onRegisteredSW(_url, reg) { Updates.webRegistered(reg); },
+      onNeedRefresh() { pendingUpdate = () => updateSW(true); Updates.webReady(pendingUpdate); maybeApplyUpdate(); },
       onRegisteredSW(_url, reg) { if (reg) setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000); },
     });
   } catch { /* dev server without the PWA plugin */ }
@@ -100,6 +102,7 @@ async function init() {
 
   App.navigate('home');
   registerServiceWorker();
+  Updates.start();
 
   Sync.start({
     ready: () => App.getProgress(),

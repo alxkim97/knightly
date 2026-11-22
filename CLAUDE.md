@@ -20,6 +20,13 @@ Chess app: learn (Duolingo-style path), puzzles, play vs Stockfish. One codebase
   - Realtime on the table, plus a catch-up pull by updated_at.
 - Next: commit v2.4.0 when Alex says so, push `main` (Vercel redeploys), rebuild desktop (`npm run electron:build`), sign in on real devices (first sign-in uploads local progress).
 
+## Desktop updates (v2.5.0, uncommitted)
+- Same scheme as Vetted: electron-updater reads GitHub Releases of the (now **public**) `alxkim97/knightly` repo (`build.publish` in package.json). Main process in `main.js` (checks 8 s after launch, then every 6 h, packaged builds only), UI in Settings -> App updates (`src/updates.js`, works for desktop and web).
+- The app lives in the tray, so install is via the "Restart to update" button (`quitAndInstall`), not on quit.
+- Release flow: bump `version`, `npm run release` (builds with `--publish never`, then `scripts/publish-release.js` uploads `Knightly-Setup-X.exe`, `.blockmap`, `latest.yml` with `gh`). gh is logged in as alxkim97 at `C:\Program Files\GitHub CLI\gh.exe`.
+- 2.3.0 and older installs have no updater: install 2.5.0 by hand once; later versions update in place.
+- Not yet verified: a real update (needs 2.5.0 published, then a 2.5.1 release).
+
 ## Commands
 `npm run dev` (web dev server) · `npm run build` (-> `dist/`, what Vercel runs) · `npm run preview` · `npm start` (build + desktop) · `npm run electron:dev` · `npm run electron:build` (installer -> `release/`) · `npm run build-course` (validates + writes `public/data/course.json`) · `npm test` (row/sync unit tests, node:test) · `build-lessons`, `fetch-puzzles`, `build-icon`.
 

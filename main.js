@@ -1,4 +1,5 @@
 const { app, BrowserWindow, nativeImage, Menu, Tray, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
@@ -24,6 +25,39 @@ ipcMain.handle('settings:set', (_e, data) => { writeJson(settingsPath, data); re
 ipcMain.handle('progress:get', () => readJson(progressPath, null));
 ipcMain.handle('progress:set', (_e, data) => { writeJson(progressPath, data); return true; });
 ipcMain.handle('app:getVersion', () => app.getVersion());
+
+// ── Updates (GitHub Releases, same scheme as Vetted) ─────────────────────
+// The app lives in the tray, so it is rarely really quit: updates download in
+// the background and Settings shows "Restart to update" instead of waiting for
+// the next quit. Only packaged builds check (npm start / --dev never do).
+let updateStatus = { state: 'idle', version: null, percent: 0, error: null, checkedAt: null };
+function setUpdate(patch) {
+  updateStatus = { ...updateStatus, ...patch };
+  for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('updater:status', updateStatus);
+}
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.on('checking-for-update', () => setUpdate({ state: 'checking', error: null }));
+autoUpdater.on('update-available', (i) => setUpdate({ state: 'downloading', version: i.version, percent: 0 }));
+autoUpdater.on('update-not-available', () => setUpdate({ state: 'current', version: null, checkedAt: new Date().toISOString() }));
+autoUpdater.on('download-progress', (p) => setUpdate({ state: 'downloading', percent: Math.round(p.percent || 0) }));
+autoUpdater.on('update-downloaded', (i) => setUpdate({ state: 'ready', version: i.version, percent: 100 }));
+autoUpdater.on('error', (e) => setUpdate({ state: 'error', error: String((e && e.message) || e).split('\n')[0].slice(0, 160) }));
+
+async function checkForUpdates() {
+  if (!app.isPackaged) { setUpdate({ state: 'dev' }); return updateStatus; }
+  if (updateStatus.state === 'downloading' || updateStatus.state === 'ready') return updateStatus;
+  try { await autoUpdater.checkForUpdates(); } catch (e) { setUpdate({ state: 'error', error: String((e && e.message) || e).split('\n')[0].slice(0, 160) }); }
+  return updateStatus;
+}
+ipcMain.handle('updater:status', () => updateStatus);
+ipcMain.handle('updater:check', () => checkForUpdates());
+ipcMain.handle('updater:install', () => {
+  if (updateStatus.state !== 'ready') return false;
+  isQuitting = true; // let the tray-hiding window actually close
+  autoUpdater.quitAndInstall(false, true);
+  return true;
+});
 
 // Renderer pages are built by Vite into dist/. With --dev they come from the
 // Vite dev server instead (run `npm run dev` first) for instant reloads.
@@ -195,6 +229,10 @@ if (process.platform === 'win32') app.setAppUserModelId('com.apm.knightly');
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  if (app.isPackaged) {
+    setTimeout(checkForUpdates, 8000);
+    setInterval(checkForUpdates, 6 * 60 * 60 * 1000);
+  }
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin' && isQuitting) app.quit(); });
 app.on('activate', showMainWindow);

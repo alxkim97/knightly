@@ -45,6 +45,14 @@ export const platform = {
     return __APP_VERSION__; // injected by vite.config.mjs
   },
 
+  // ── App updates (desktop only; the web build updates through the service worker) ──
+  updates: desktop ? {
+    getStatus: () => desktop.getUpdateStatus(),
+    check: () => desktop.checkForUpdates(),
+    install: () => desktop.installUpdate(),
+    onStatus: (cb) => desktop.onUpdateStatus(cb),
+  } : null,
+
   // ── Pop-out mini board (desktop only) ──
   hasMiniBoard: !!desktop,
   toggleMiniBoard: () => desktop.toggleMiniBoard(),
