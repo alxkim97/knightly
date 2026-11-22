@@ -1,4 +1,10 @@
-class ChessBoard {
+import { el, FILES } from './util.js';
+import { pieceSVG } from './pieces.js';
+
+// Every live board, so a theme/piece change can repaint them in place.
+export const liveBoards = new Set();
+
+export class ChessBoard {
   constructor(container, opts = {}) {
     this.container = container;
     this.interactive = opts.interactive !== false;
@@ -31,6 +37,7 @@ class ChessBoard {
     this.squareEls = {};
     this._buildSquares();
     this._bindEvents();
+    liveBoards.add(this);
   }
 
   _orderedSquares() {
@@ -139,7 +146,7 @@ class ChessBoard {
   }
 
   _beginDrag(square, piece, e) {
-    this._drag = { from: square, pointerId: e.pointerId, moved: false, glyph: PIECE_GLYPH[piece.color][piece.type], color: piece.color };
+    this._drag = { from: square, pointerId: e.pointerId, moved: false, piece };
     this.boardEl.setPointerCapture(e.pointerId);
     this.boardEl.addEventListener('pointermove', this._onDragMove = (ev) => this._onPointerMove(ev));
     this.boardEl.addEventListener('pointerup', this._onDragUp = (ev) => this._onPointerUp(ev), { once: true });
@@ -154,8 +161,8 @@ class ChessBoard {
       if (moveDist < 4) return;
       this._drag.moved = true;
       this.squareEls[this._drag.from]?.classList.add('dragging-from');
-      this.ghostEl.className = `piece-ghost ${this._drag.color === 'w' ? 'white' : 'black'}`;
-      this.ghostEl.textContent = this._drag.glyph;
+      this.ghostEl.className = 'piece-ghost';
+      this.ghostEl.innerHTML = pieceSVG(this._drag.piece.color, this._drag.piece.type);
     }
     const rect = this.boardEl.getBoundingClientRect();
     const size = rect.width / 8;
@@ -428,9 +435,28 @@ class ChessBoard {
         if (!cell) continue;
         const sqEl = this.squareEls[cell.square];
         if (!sqEl) continue;
-        const piece = el('span', `piece ${cell.color === 'w' ? 'white' : 'black'}`, PIECE_GLYPH[cell.color][cell.type]);
+        const piece = el('span', 'piece');
+        piece.innerHTML = pieceSVG(cell.color, cell.type);
         sqEl.appendChild(piece);
       }
     }
   }
+}
+
+// Static, non-interactive board for cards and lists. Built as one HTML
+// string (no ChessBoard instance) so a page of 30 thumbnails stays cheap.
+export function boardThumb(board, { flipped = false } = {}) {
+  const cells = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const r = flipped ? 7 - row : row;
+      const c = flipped ? 7 - col : col;
+      const cell = board[r][c];
+      cells.push(`<span class="square ${(r + c) % 2 === 0 ? 'light' : 'dark'}">${cell ? `<span class="piece">${pieceSVG(cell.color, cell.type)}</span>` : ''}</span>`);
+    }
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'thumb';
+  wrap.innerHTML = `<div class="board">${cells.join('')}</div>`;
+  return wrap;
 }

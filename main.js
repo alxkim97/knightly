@@ -25,6 +25,15 @@ ipcMain.handle('progress:get', () => readJson(progressPath, null));
 ipcMain.handle('progress:set', (_e, data) => { writeJson(progressPath, data); return true; });
 ipcMain.handle('app:getVersion', () => app.getVersion());
 
+// Renderer pages are built by Vite into dist/. With --dev they come from the
+// Vite dev server instead (run `npm run dev` first) for instant reloads.
+const isDev = process.argv.includes('--dev');
+const DEV_URL = 'http://localhost:5173';
+function loadPage(win, page) {
+  if (isDev) win.loadURL(`${DEV_URL}/${page}`);
+  else win.loadFile(path.join(__dirname, 'dist', page));
+}
+
 const appIcon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png'));
 
 let mainWindow = null;
@@ -38,20 +47,21 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
-    minWidth: 960,
-    minHeight: 640,
+    minWidth: 640,
+    minHeight: 560,
     title: 'Knightly',
     icon: appIcon,
     autoHideMenuBar: true,
-    backgroundColor: '#0f1115',
+    backgroundColor: '#000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // preload needs require('chess.js'); page itself still has no Node access
+      sandbox: true,
     },
   });
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  loadPage(mainWindow, 'index.html');
+  if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
@@ -83,12 +93,12 @@ function createMiniWindow() {
     useContentSize: true, // so getSize/setSize below measure the actual web content, not outer window bounds — otherwise any invisible OS chrome makes the rendered board subtly non-square
     alwaysOnTop: miniAlwaysOnTop,
     skipTaskbar: true,
-    backgroundColor: '#0f1115',
+    backgroundColor: '#000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload-mini.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
   miniWindow = win;
@@ -100,7 +110,7 @@ function createMiniWindow() {
     const [w, h] = win.getContentSize();
     if (w !== h) win.setContentSize(Math.max(w, h), Math.max(w, h));
   });
-  win.loadFile(path.join(__dirname, 'mini.html'));
+  loadPage(win, 'mini.html');
   // The renderer may send its first 'mini:sync' before this window's page has
   // finished loading and registered its listener — that message would be
   // silently dropped. Replay the last known state once it's actually ready.

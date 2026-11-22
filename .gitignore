@@ -1,4 +1,6 @@
 node_modules/
 dist/
+release/
+dev-dist/
 *.log
 assets/icon-256.png

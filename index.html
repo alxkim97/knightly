@@ -1,40 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self'; connect-src 'self' https://lichess.org;" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https://lichess.org ws://localhost:* ws://127.0.0.1:*;" />
+<meta name="theme-color" content="#000000" />
+<meta name="description" content="Learn chess, solve puzzles and play the computer." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Knightly" />
+<link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <title>Knightly</title>
-<link rel="icon" href="assets/icon.png" />
-<link rel="stylesheet" href="src/styles.css" />
 </head>
 <body>
-  <div id="titlebar">
-    <span class="tb-icon">&#9822;</span>
-    <span class="tb-title">Knightly</span>
-    <span id="clock-display" class="tb-clock"></span>
+  <div class="shell">
+    <aside class="rail" aria-label="Main">
+      <div class="brand"><div class="brand-mark"></div><div class="brand-name">Knightly</div></div>
+      <nav id="nav-rail" aria-label="Sections"></nav>
+      <div class="rail-foot">
+        <button type="button" class="nav-btn" data-lookpick><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A5.7 5.7 0 0 0 22 9.7C22 5.4 17.5 2 12 2Z"/></svg><span>Look</span></button>
+        <div class="rail-ver" id="rail-version"></div>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark"></div><div class="brand-name">Knightly</div></div>
+      <span class="chip xp" id="tb-xp"></span>
+      <button type="button" class="icon-btn" data-lookpick aria-label="Change look"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A5.7 5.7 0 0 0 22 9.7C22 5.4 17.5 2 12 2Z"/></svg></button>
+    </header>
+
+    <main class="main"><div id="view"></div></main>
+    <aside class="side" id="side" aria-label="Your stats"></aside>
   </div>
 
-  <nav id="navbar">
-    <button class="nav-btn active" data-view="home">Home</button>
-    <button class="nav-btn" data-view="play-setup">Play</button>
-    <button class="nav-btn" data-view="puzzles-hub">Puzzles</button>
-    <button class="nav-btn" data-view="learn-hub">Learn</button>
-    <button class="nav-btn" data-view="settings">Settings</button>
-  </nav>
-
-  <main id="view"></main>
-
-  <div id="toast" class="toast hidden"></div>
-
-  <script src="src/chessutil.js"></script>
-  <script src="src/sound.js"></script>
-  <script src="src/board.js"></script>
-  <script src="src/ai.js"></script>
-  <script src="src/game-view.js"></script>
-  <script src="src/puzzles.js"></script>
-  <script src="src/lessons.js"></script>
-  <script src="src/settings.js"></script>
-  <script src="src/history.js"></script>
-  <script src="src/app.js"></script>
+  <nav class="tabbar" id="nav-tab" aria-label="Sections"></nav>
+  <div id="pop-root"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

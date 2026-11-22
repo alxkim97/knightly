@@ -1,4 +1,6 @@
-const Sound = (() => {
+import { App } from './app.js';
+
+export const Sound = (() => {
   let ctx = null;
   const tones = {
     move: [440, 0.07],

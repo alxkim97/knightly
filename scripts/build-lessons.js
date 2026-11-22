@@ -1,4 +1,4 @@
-// Builds data/lessons.json from the lesson definitions below. Every move is
+// Builds public/data/lessons.json from the lesson definitions below. Every move is
 // replayed through chess.js so a typo'd square or illegal line fails loudly
 // at build time instead of silently breaking the in-app trainer.
 const fs = require('fs');
@@ -224,6 +224,6 @@ for (const l of built) {
     (l.finalFlags.isStalemate ? '  [stalemate]' : ''));
 }
 
-const outPath = path.join(__dirname, '..', 'data', 'lessons.json');
+const outPath = path.join(__dirname, '..', 'public', 'data', 'lessons.json');
 fs.writeFileSync(outPath, JSON.stringify(built, null, 2), 'utf8');
 console.log(`\nWrote ${built.length} lessons to ${outPath}`);

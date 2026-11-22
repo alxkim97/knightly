@@ -1,40 +1,38 @@
+// Pop-out mini board (desktop only). Mirrors the main window's live board;
+// moves made here are sent up and applied by the main window's own game
+// logic, then flow back down through mini:update. It keeps a local chess.js
+// copy only to know legal moves for click/drag highlighting.
+import '@fontsource/anton';
+import './styles.css';
+import { ChessBoard } from './board.js';
+import { engine } from './engine.js';
+import { applyLook } from './theme.js';
+import { PIECE_DEFS } from './pieces.js';
+
 const MINI_ID = 'mini-mirror';
-const wrap = document.getElementById('mini-wrap');
+document.body.insertAdjacentHTML('afterbegin', PIECE_DEFS);
 let flipped = false;
 
-const board = new ChessBoard(wrap, { interactive: true, onUserMove: handleMiniMove });
+const board = new ChessBoard(document.querySelector('#mini-wrap .board-wrap'), {
+  interactive: true,
+  onUserMove: (from, to, promotion) => window.miniAPI.sendMove({ from, to, promotion }),
+});
 
-function handleMiniMove(from, to, promotion) {
-  miniAPI.sendMove({ from, to, promotion });
-}
-
-miniAPI.onUpdate((payload) => {
-  if (payload.theme) document.documentElement.setAttribute('data-theme', payload.theme);
-  if (payload.boardTheme && payload.boardTheme !== 'classic') {
-    document.documentElement.setAttribute('data-board-theme', payload.boardTheme);
-  } else {
-    document.documentElement.removeAttribute('data-board-theme');
-  }
-  if (payload.pieceTheme && payload.pieceTheme !== 'classic') {
-    document.documentElement.setAttribute('data-piece-theme', payload.pieceTheme);
-  } else {
-    document.documentElement.removeAttribute('data-piece-theme');
-  }
+window.miniAPI.onUpdate((payload) => {
+  if (payload.look) applyLook(payload.look);
   if (!!payload.flipped !== flipped) {
     flipped = !!payload.flipped;
     board.setFlipped(flipped);
   }
-
-  const state = window.chessEngine.reset(MINI_ID, payload.fen);
+  const state = engine.reset(MINI_ID, payload.fen);
   state.history = payload.lastMove ? [payload.lastMove] : [];
   board.render(state);
 });
 
-document.getElementById('mini-close').addEventListener('click', () => miniAPI.closeWindow());
-
+document.getElementById('mini-close').addEventListener('click', () => window.miniAPI.closeWindow());
 const pinBtn = document.getElementById('mini-pin');
 pinBtn.addEventListener('click', async () => {
-  const pinned = await miniAPI.togglePin();
+  const pinned = await window.miniAPI.togglePin();
   pinBtn.classList.toggle('pinned', pinned);
 });
-miniAPI.onPinState((pinned) => pinBtn.classList.toggle('pinned', pinned));
+window.miniAPI.onPinState((pinned) => pinBtn.classList.toggle('pinned', pinned));

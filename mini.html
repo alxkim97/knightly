@@ -1,86 +1,34 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
-<title>Knightly — Mini Board</title>
-<link rel="stylesheet" href="src/styles.css" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://localhost:* ws://127.0.0.1:*;" />
+<title>Knightly · Mini Board</title>
 <style>
-  html, body { background: var(--bg); overflow: hidden; }
-  /* Electron's native resize (see main.js's 'resize' handler) snaps the
-     window back to square shortly after the user releases the drag, but
-     during the live drag itself the OS reports a stream of intermediate,
-     non-square sizes — if the board just filled that rectangle it would
-     visibly stretch/warp every frame. min(100vw, 100vh) sizes #mini-square
-     to the largest square that fits the *current* (possibly transient)
-     window shape, recomputed by the browser on every paint with no IPC
-     round trip, so the board itself is always square and just letterboxes
-     briefly instead of warping. */
-  #mini-square {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: min(100vw, 100vh);
-    height: min(100vw, 100vh);
-    transform: translate(-50%, -50%);
-  }
-  /* The outer ~8px is left with no app-region at all so Windows' native
-     resize-edge hit-testing (which runs at the literal window border for any
-     resizable frameless window, independent of app-region, and takes
-     priority over CSS app-region right at the edge) isn't fighting our drag
-     region — the previous 5px buffer was too close to that native hit zone
-     and dragging never engaged. Inset from that, #mini-wrap is the drag
-     handle; the board itself inside it is no-drag so clicking pieces still
-     works reliably (see the click-jitter note below). */
-  #mini-wrap {
-    position: absolute;
-    top: 8px; left: 8px; right: 8px; bottom: 8px;
-    padding: 8px;
-    -webkit-app-region: drag;
-  }
-  #mini-wrap .board { -webkit-app-region: no-drag; }
-
-  /* Anchored to the real window corner (not the inscribed square) so it
-     stays put even while #mini-square is letterboxing mid-resize. */
-  #mini-toolbar {
-    -webkit-app-region: no-drag;
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    display: flex;
-    gap: 6px;
-    z-index: 10;
-  }
-  #mini-pin, #mini-close {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.45);
-    color: #fff;
-    font-size: 12px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s, background 0.15s;
-  }
-  body:hover #mini-pin, body:hover #mini-close { opacity: 0.85; }
+  html, body { background: var(--bg); overflow: hidden; min-height: 0; height: 100%; }
+  /* Electron snaps the window back to square after a resize drag, but the OS
+     reports non-square sizes mid-drag. min(100vw, 100vh) keeps the board
+     square on every paint, letterboxing briefly instead of warping. */
+  #mini-square { position: absolute; top: 50%; left: 50%; width: min(100vw, 100vh); height: min(100vw, 100vh); transform: translate(-50%, -50%); }
+  /* Outer 8px has no app-region so Windows' native resize edge isn't fought;
+     inset from that, #mini-wrap is the drag handle and the board is no-drag. */
+  #mini-wrap { position: absolute; inset: 8px; padding: 8px; -webkit-app-region: drag; }
+  #mini-wrap .board-wrap { -webkit-app-region: no-drag; height: 100%; }
+  #mini-toolbar { -webkit-app-region: no-drag; position: absolute; top: 6px; right: 6px; display: flex; gap: 6px; z-index: 10; }
+  #mini-pin, #mini-close { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; border: 0; padding: 0; }
+  body:hover #mini-pin, body:hover #mini-close { opacity: .85; }
   #mini-close:hover { opacity: 1 !important; background: var(--bad); }
   #mini-pin:hover { opacity: 1 !important; }
-  #mini-pin.pinned { opacity: 0.85; background: var(--accent); }
+  #mini-pin.pinned { opacity: .85; background: #16a34a; }
+  #mini-pin svg, #mini-close svg { width: 12px; height: 12px; }
 </style>
 </head>
 <body>
-  <div id="mini-square">
-    <div id="mini-wrap"></div>
-  </div>
+  <div id="mini-square"><div id="mini-wrap"><div class="board-wrap"></div></div></div>
   <div id="mini-toolbar">
-    <span id="mini-pin" title="Keep on top">📌</span>
-    <span id="mini-close" title="Close mini board">✕</span>
+    <button type="button" id="mini-pin" title="Keep on top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/></svg></button>
+    <button type="button" id="mini-close" title="Close mini board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
-  <script src="src/chessutil.js"></script>
-  <script src="src/board.js"></script>
-  <script src="src/mini.js"></script>
+  <script type="module" src="./src/mini.js"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { Chess } = require('chess.js');
 
-const OUT_PATH = path.join(__dirname, '..', 'data', 'puzzles.json');
+const OUT_PATH = path.join(__dirname, '..', 'public', 'data', 'puzzles.json');
 const PER_TIER = 20;
 const TIERS = [
   { difficulty: 'easiest', level: 'beginner' },

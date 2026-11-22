@@ -1,4 +1,4 @@
-const DIFFICULTY_PRESETS = [
+export const DIFFICULTY_PRESETS = [
   { key: 'beginner', label: 'Beginner', desc: '~400 Elo — makes frequent mistakes', randomMoveChance: 0.55, skill: 0, moveTimeMs: 50 },
   { key: 'easy', label: 'Easy', desc: '~700 Elo — knows the basics', randomMoveChance: 0.3, skill: 2, moveTimeMs: 120 },
   { key: 'intermediate', label: 'Intermediate', desc: '~1300 Elo — club player', randomMoveChance: 0, useElo: 1320, moveTimeMs: 500 },
@@ -7,7 +7,7 @@ const DIFFICULTY_PRESETS = [
   { key: 'expert', label: 'Expert', desc: 'Full strength — good luck', randomMoveChance: 0, skill: 20, moveTimeMs: 1800, full: true },
 ];
 
-class StockfishAI {
+export class StockfishAI {
   constructor() {
     this.worker = null;
     this.ready = null;
@@ -18,7 +18,7 @@ class StockfishAI {
     if (this.ready) return this.ready;
     this.ready = new Promise((resolve, reject) => {
       try {
-        this.worker = new Worker('src/vendor/stockfish/stockfish-nnue-16-single.js');
+        this.worker = new Worker('stockfish/stockfish-nnue-16-single.js');
       } catch (err) {
         reject(err);
         return;

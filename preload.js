@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
-const { createGameStore } = require('./chess-engine-bridge');
 
-contextBridge.exposeInMainWorld('chessEngine', createGameStore());
-
+// Storage + pop-out board bridge. The chess engine now lives in the page
+// bundle (src/engine.js), so this preload only needs Electron IPC and the
+// window can run sandboxed.
 contextBridge.exposeInMainWorld('knightlyAPI', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (data) => ipcRenderer.invoke('settings:set', data),
