@@ -23,7 +23,7 @@ export const BOARD_COLORS = [
 
 export const PIECE_COLORS = [['mono', 'Black and white'], ['wood', 'Classic wood']];
 
-export const LOOK_DEFAULTS = { skin: 'strategy-night', pieceSet: 'flat', pieceColor: 'mono', boardColor: 'green' };
+export const LOOK_DEFAULTS = { skin: 'strategy-night', pieceSet: 'soft', pieceColor: 'mono', boardColor: 'green' };
 
 // v1 stored { theme: 'dark'|'light', boardTheme: 'classic'|'emerald'|... }.
 // Carry the board choice over once; the old dark/light flag maps to the

@@ -47,6 +47,36 @@ export class StockfishAI {
     }
   }
 
+  // Full strength, for analysis and hints.
+  async setFullStrength() {
+    await this.init();
+    this.worker.postMessage('setoption name UCI_LimitStrength value false');
+    this.worker.postMessage('setoption name Skill Level value 20');
+  }
+
+  // Score a position. cp/mate are from the side to move's point of view.
+  analyse(fen, ms = 220) {
+    return new Promise((resolve) => {
+      let last = { cp: 0, mate: null, pv: [] };
+      const listener = (e) => {
+        const line = e.data;
+        if (typeof line !== 'string') return;
+        if (line.startsWith('info') && line.includes(' score ') && line.includes(' pv ') && !/(lowerbound|upperbound)/.test(line)) {
+          const mate = line.match(/score mate (-?\d+)/);
+          const cp = line.match(/score cp (-?\d+)/);
+          last = { cp: cp ? Number(cp[1]) : 0, mate: mate ? Number(mate[1]) : null, pv: line.split(' pv ')[1].trim().split(/\s+/) };
+        } else if (line.startsWith('bestmove')) {
+          this.worker.removeEventListener('message', listener);
+          const best = line.split(' ')[1];
+          resolve({ ...last, best: best && best !== '(none)' ? best : null });
+        }
+      };
+      this.worker.addEventListener('message', listener);
+      this.worker.postMessage('position fen ' + fen);
+      this.worker.postMessage('go movetime ' + ms);
+    });
+  }
+
   getBestMove(fen) {
     return new Promise((resolve) => {
       const preset = this.preset || DIFFICULTY_PRESETS[2];
@@ -85,4 +115,22 @@ export class StockfishAI {
     this.worker = null;
     this.ready = null;
   }
+}
+
+// How long the computer "thinks" before it moves, so it feels like a person:
+// quick and impulsive at the low levels, slower and more deliberate higher up,
+// always varied, and shorter when the move is obvious (a recapture, a forced
+// reply, the first few opening moves).
+const THINK_MS = {
+  beginner: [350, 1400], easy: [450, 1900], intermediate: [650, 2800],
+  advanced: [900, 3600], hard: [1100, 4400], expert: [1300, 5200],
+};
+export function thinkDelay(key, { plies = 0, legalCount = 20, recapture = false } = {}) {
+  const [lo, hi] = THINK_MS[key] || THINK_MS.intermediate;
+  if (legalCount <= 1) return 200 + Math.random() * 250;
+  let t = lo + (hi - lo) * Math.pow(Math.random(), 1.7); // most replies are on the quicker side, a few are long
+  if (plies < 8) t *= 0.55;
+  if (recapture) t *= 0.65;
+  if (legalCount > 35) t *= 1.2;
+  return Math.round(t);
 }

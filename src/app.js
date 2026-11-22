@@ -37,6 +37,7 @@ export const App = {
       xp: 0,
       record: { wins: 0, losses: 0, draws: 0 },
       history: [],
+      games: [],                   // finished games vs the computer, with review summaries
       course: { done: {} },        // lessonId -> { best, plays, first, last }
       streak: { current: 0, best: 0, last: null, freezeWeek: null },
       streakDays: [],
@@ -104,6 +105,25 @@ export const App = {
     progress.history = progress.history || [];
     progress.history.unshift({ id: Sync.newId(), date: new Date().toISOString(), ...entry });
     progress.history = progress.history.slice(0, 50);
+    await App.saveProgress(progress);
+  },
+  // A finished game (kept in full so it can be reviewed and mined for habits).
+  async recordGame(game) {
+    const progress = await App.getProgress();
+    progress.games = progress.games || [];
+    progress.games.unshift(game);
+    await App.saveProgress(progress);
+  },
+  async updateGame(id, patch) {
+    const progress = await App.getProgress();
+    const g = (progress.games || []).find((x) => x.id === id);
+    if (!g) return;
+    Object.assign(g, patch);
+    await App.saveProgress(progress);
+  },
+  async removeGame(id) {
+    const progress = await App.getProgress();
+    progress.games = (progress.games || []).filter((x) => x.id !== id);
     await App.saveProgress(progress);
   },
   async recordGameResult(result) {
@@ -226,28 +246,40 @@ export function buildShell() {
   document.getElementById('nav-tab').innerHTML = navHTML;
   document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => App.navigate(b.dataset.nav)));
   document.querySelectorAll('.brand-mark').forEach((m) => { m.innerHTML = brandKnightSVG(); });
-  document.querySelectorAll('[data-lookpick]').forEach((b) => b.addEventListener('click', toggleLookPopover));
   platform.getVersion().then((v) => {
     const node = document.getElementById('rail-version');
-    if (node) node.textContent = `Knightly v${v}`;
+    if (node) node.textContent = `Knightly v${v} · Alex Kim`;
   });
 }
 
+// Quick piece/colour picker (opened from the game screen). Clicking anywhere
+// outside it, the close button or Esc closes it.
+let popOpener = null;
 function closeLookPopover() {
   const root = document.getElementById('pop-root');
   if (root) root.innerHTML = '';
+  popOpener = null;
 }
-function openLookPopover() {
+function openLookPopover(opener) {
   const root = document.getElementById('pop-root');
-  const pop = html(`<div class="card popover" role="dialog" aria-label="Look">
-    <div class="pop-head"><div class="blk-h">Look</div><button class="icon-btn" aria-label="Close">${ICON.x}</button></div></div>`);
+  popOpener = opener || null;
+  const pop = html(`<div class="card popover" role="dialog" aria-label="Pieces">
+    <div class="pop-head"><div class="blk-h">Pieces and board</div><button class="icon-btn" aria-label="Close">${ICON.x}</button></div></div>`);
   pop.querySelector('button').addEventListener('click', closeLookPopover);
   // After a change, rebuild the popover so its own swatches show the new state.
-  pop.appendChild(lookPicker({ compact: true, onChange: () => { closeLookPopover(); openLookPopover(); } }));
+  pop.appendChild(lookPicker({ compact: true, pieces: true, onChange: () => { const o = popOpener; closeLookPopover(); openLookPopover(o); } }));
+  root.innerHTML = '';
   root.appendChild(pop);
 }
-function toggleLookPopover() {
+App.togglePiecePicker = (opener) => {
   const root = document.getElementById('pop-root');
-  if (root.firstChild) closeLookPopover(); else openLookPopover();
-}
+  if (root.firstChild) closeLookPopover(); else openLookPopover(opener);
+};
+App.closePiecePicker = closeLookPopover;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLookPopover(); });
+document.addEventListener('pointerdown', (e) => {
+  const root = document.getElementById('pop-root');
+  if (!root || !root.firstChild) return;
+  if (root.contains(e.target) || (popOpener && popOpener.contains(e.target))) return;
+  closeLookPopover();
+}, true);

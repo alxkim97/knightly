@@ -2,14 +2,23 @@
 
 Chess app: learn (Duolingo-style path), puzzles, play vs Stockfish. One codebase builds a **web app (PWA, Vercel)** and a **Windows desktop app (Electron)**. Owner: Alex. Working style: discuss the plan before building, then build and verify; commit only when asked.
 
-## Status (v2.3.0, branch `v2-web`, pushed to GitHub, not merged into `main`)
-- Phases 1-5 committed (phase 5 = f90d645). Sync verified end to end: two-device test against the WorkLog project passed (live updates, settings, offline merge, deletes).
-- `SUPABASE-SETUP.md` SQL has been run in the WorkLog project. Gotchas hit: run it in the **worklog** project (not lifelog) and it needs the `grant ... to authenticated` line (new tables aren't exposed to the API without it).
+## Status (v2.4.0 in the working tree, uncommitted; v2.3.0 sync is on `main` and deployed on Vercel)
+- Phase 5 Supabase sync done and verified (two-device test). `SUPABASE-SETUP.md` SQL has been run in the WorkLog project (needs the `grant ... to authenticated` line; run it in the **worklog** project, not lifelog).
+- v2.4.0 (this session, not committed): play-screen overhaul.
+  - Pass-and-play and vs-computer screens: bigger board with a per-device size slider (`settings.boardScale`, device-only), a "Pieces" quick picker (closes on outside click), Soft pieces default, "Alex Kim" next to the version, Look button removed from rail and top bar, macOS-style overlay scrollbars, pinch/double-tap zoom locked off on mobile.
+  - Promotion chooser (board.js `_askPromotion`; premoves still auto-queen).
+  - Human-like thinking pauses (`thinkDelay` in ai.js, per level).
+  - Result screen overlay; Resign now shows it instead of leaving.
+  - Automatic game review after every vs-computer game: `analysis.js` (Stockfish at full strength, 220 ms/position, grades by win-chance lost: best/good/inaccuracy/mistake/blunder, accuracy %, rule-based plain-English explanations from chess.js + the engine lines), `views/review-panel.js`, `views/gamereview.js` (saved games). The job survives leaving the game screen and still saves the summary.
+  - Habits: finished games are stored as `progress.games` (synced as `game` rows). `insights.js` + `views/insights.js` ("Your play", reached from Play) give stats, where points are lost by phase, thinking-time habits, openings and up to 5 tips.
+  - Tests: `npm test` = 14 tests (rows, analysis, insights).
+- Not verified: the desktop installer; the new screens on a real phone; review speed on a slow device.
+- Rejected: Vecteezy chess set (decision: original piece art only).
 - Sync design: one table `knightly_items` (user_id, kind, key, data, deleted, client_at, updated_at) in the **WorkLog Supabase project** (`uhlbrxyvhfmfeakckzlu`, same as Vetted).
   - RLS: own rows only, not worklog_members.
   - `knightly_push(items)` RPC: the server keeps the row with the highest client_at.
   - Realtime on the table, plus a catch-up pull by updated_at.
-- Next: Alex imports the GitHub repo in Vercel (branch `v2-web`; no Vercel CLI on this PC), rebuilds desktop (`npm run electron:build`, installer still untested), signs in on real devices (first sign-in uploads local progress). Then merge `v2-web` into `main`.
+- Next: commit v2.4.0 when Alex says so, push `main` (Vercel redeploys), rebuild desktop (`npm run electron:build`), sign in on real devices (first sign-in uploads local progress).
 
 ## Commands
 `npm run dev` (web dev server) · `npm run build` (-> `dist/`, what Vercel runs) · `npm run preview` · `npm start` (build + desktop) · `npm run electron:dev` · `npm run electron:build` (installer -> `release/`) · `npm run build-course` (validates + writes `public/data/course.json`) · `npm test` (row/sync unit tests, node:test) · `build-lessons`, `fetch-puzzles`, `build-icon`.
@@ -33,6 +42,7 @@ Chess app: learn (Duolingo-style path), puzzles, play vs Stockfish. One codebase
 - Synced settings: everything except `sound` and `miniAlwaysOnTop` (per device). Migrations of settings save locally only.
 - Counters (XP, wins/losses/draws, puzzles today, reviews, learned, active days) live in **per-device rows** (`count` kind, key `<date>|<deviceId>` or `base|<deviceId>`); totals are sums. Diffs turn counter increases into increments on this device's row for today; decreases are ignored (reset uses `App.resetProgress()` which tombstones rows).
 - Streak is **derived** from active days (`computeStreak` in streak.js): one missed day between active days is frozen, once per week. Not stored.
+- Games (`kind: game`) are add/update/delete rows: the review summary is attached later by updating the same row; undo after a finished game deletes it.
 - Lessons merge field by field (max best/plays, min first, max last). Review items, settings and puzzle meta: latest client_at wins. Puzzles, classic lessons and events are add-only. History entries have random ids.
 - First sign-in on an install uploads its local progress (merged with the cloud). Signing in as a different account than last time replaces local progress with that account's.
 

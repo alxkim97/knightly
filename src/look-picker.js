@@ -16,13 +16,14 @@ function seg(label, options, current, onPick) {
   return node;
 }
 
-export function lookPicker({ compact = false, onChange } = {}) {
+export function lookPicker({ compact = false, pieces = false, onChange } = {}) {
   const App = AppRef;
   const s = App.settings;
   const done = () => { if (onChange) onChange(); };
   const wrap = html('<div class="look-picker"></div>');
 
-  // Themes
+  // Themes (the quick picker on the game screen is pieces and board only)
+  if (!pieces) {
   if (!compact) wrap.appendChild(html('<div class="blk-h">Theme</div>'));
   const skins = html('<div class="skins"></div>');
   SKINS.forEach((sk) => {
@@ -36,9 +37,10 @@ export function lookPicker({ compact = false, onChange } = {}) {
     skins.appendChild(b);
   });
   wrap.appendChild(skins);
+  }
 
   // Pieces
-  wrap.appendChild(html('<div class="blk-h" style="margin-top:14px">Pieces</div>'));
+  wrap.appendChild(html(`<div class="blk-h" style="margin-top:${pieces ? 0 : 14}px">Pieces</div>`));
   if (!compact) {
     wrap.appendChild(html(`<div class="kn-show"><div class="square light">${pieceSVG('w', 'n')}</div><div class="square dark">${pieceSVG('b', 'n')}</div><div class="square light">${pieceSVG('b', 'n')}</div><div class="square dark">${pieceSVG('w', 'n')}</div></div>`));
   }

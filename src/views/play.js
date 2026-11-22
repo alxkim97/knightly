@@ -69,6 +69,14 @@ export async function renderPlaySetup(container) {
 
   const total = rec.wins + rec.losses + rec.draws;
   col.appendChild(html(`<section class="card record"><div><span>Won</span><b class="good">${rec.wins}</b></div><div><span>Drawn</span><b>${rec.draws}</b></div><div><span>Lost</span><b class="bad">${rec.losses}</b></div><div><span>Win rate</span><b>${total ? Math.round((rec.wins / total) * 100) : 0}%</b></div></section>`));
+  const reviewed = (progress.games || []).filter((g) => g.summary && g.summary.acc != null);
+  const mine = html(`<section class="card pad"><div class="blk-h">Your play</div>
+    <p class="small muted">${(progress.games || []).length
+      ? `${(progress.games || []).length} game${(progress.games || []).length === 1 ? '' : 's'} saved${reviewed.length ? `, average accuracy ${Math.round(reviewed.reduce((a, g) => a + g.summary.acc, 0) / reviewed.length)}%` : ''}. Every game is reviewed automatically.`
+      : 'Finish a game against the computer and it is reviewed automatically: best moves, mistakes, and tips on your habits.'}</p>
+    <button type="button" class="btn ghost wide">See habits and tips</button></section>`);
+  mine.querySelector('button').addEventListener('click', () => App.navigate('insights'));
+  col.appendChild(mine);
   grid.appendChild(col);
   container.appendChild(grid);
 }

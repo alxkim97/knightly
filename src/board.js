@@ -203,9 +203,46 @@ export class ChessBoard {
     this._clearSelectionInternal();
     if (isPremove) {
       this.onPremove(target.from, target.to, needsPromotion ? 'q' : undefined);
+    } else if (needsPromotion) {
+      // A pawn reached the back rank: let the player pick the piece.
+      const color = this._pieceAt(target.from)?.color || 'w';
+      this._askPromotion(target.from, target.to, color, (piece) => this.onUserMove(target.from, target.to, piece, true));
     } else {
-      this.onUserMove(target.from, target.to, needsPromotion ? 'q' : undefined, needsPromotion);
+      this.onUserMove(target.from, target.to, undefined, false);
     }
+  }
+
+  // Queen / knight / rook / bishop chooser, stacked from the promotion square.
+  // Click outside it (or Esc) cancels and the pawn stays put.
+  _askPromotion(from, to, color, done) {
+    this._closePromotion();
+    const fileIdx = FILES.indexOf(to[0]);
+    const col = this.flipped ? 7 - fileIdx : fileIdx;
+    const rank = parseInt(to[1], 10);
+    const row = this.flipped ? rank - 1 : 8 - rank;
+    const fromTop = row === 0;
+    const overlay = el('div', 'promo');
+    const stack = el('div', `promo-col ${fromTop ? 'top' : 'bottom'}`);
+    stack.style.left = `${col * 12.5}%`;
+    for (const type of ['q', 'n', 'r', 'b']) {
+      const b = el('button', 'promo-pick');
+      b.type = 'button';
+      b.setAttribute('aria-label', { q: 'Queen', n: 'Knight', r: 'Rook', b: 'Bishop' }[type]);
+      b.innerHTML = pieceSVG(color, type);
+      b.addEventListener('click', (e) => { e.stopPropagation(); this._closePromotion(); done(type); });
+      stack.appendChild(b);
+    }
+    overlay.appendChild(stack);
+    overlay.addEventListener('pointerdown', (e) => { if (e.target === overlay) { e.preventDefault(); this._closePromotion(); } });
+    this._promoKey = (e) => { if (e.key === 'Escape') this._closePromotion(); };
+    document.addEventListener('keydown', this._promoKey);
+    this.container.appendChild(overlay);
+    this._promoEl = overlay;
+  }
+
+  _closePromotion() {
+    if (this._promoEl) { this._promoEl.remove(); this._promoEl = null; }
+    if (this._promoKey) { document.removeEventListener('keydown', this._promoKey); this._promoKey = null; }
   }
 
   _pieceAt(square) {
@@ -403,6 +440,7 @@ export class ChessBoard {
   }
 
   render(state) {
+    this._closePromotion();
     this.state = state;
     this.lastMove = state.history && state.history.length
       ? state.history[state.history.length - 1]

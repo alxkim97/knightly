@@ -171,3 +171,20 @@ test('streak: one freeze per week covers a single missed day', () => {
   assert.equal(computeStreak(['2026-11-22', '2026-11-20', '2026-11-19', '2026-11-18', '2026-11-17', '2026-11-16', '2026-11-15', '2026-11-13'], TODAY).current, 8);
   assert.equal(computeStreak([], TODAY, 7).best, 7);
 });
+
+test('games sync as rows and an update (the review arriving later) replaces the row', () => {
+  const rows = progressToRows({ ...legacy(), games: [{ id: 'g1', date: '2026-11-21T10:00:00.000Z', result: 'win', moves: 'e2e4 e7e5' }] }, 'devA');
+  const prev = rowsToProgress(rows, TODAY);
+  assert.equal(prev.games.length, 1);
+  const next = clone(prev);
+  next.games[0].summary = { acc: 88 };
+  next.games.unshift({ id: 'g2', date: '2026-11-22T09:00:00.000Z', result: 'loss', moves: 'd2d4' });
+  const writes = diffProgress(prev, next, rows, { deviceId: 'devA', today: TODAY });
+  const games = writes.filter((w) => w.kind === 'game');
+  assert.deepEqual(games.map((w) => w.key).sort(), ['g1', 'g2']);
+  applyWrites(rows, writes, 50);
+  const after = rowsToProgress(rows, TODAY);
+  assert.equal(after.games[0].id, 'g2');
+  assert.equal(after.games[1].summary.acc, 88);
+  assert.deepEqual(diffProgress(after, clone(after), rows, { deviceId: 'devA', today: TODAY }), []);
+});

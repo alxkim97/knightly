@@ -10,10 +10,15 @@ import './styles.css';
 import { App, buildShell } from './app.js';
 import { platform } from './platform.js';
 import * as Sync from './sync.js';
+import * as Analysis from './analysis.js';
+import { engine } from './engine.js';
+import { ChessBoard } from './board.js';
 import { applyLook, migrateLook } from './theme.js';
 import { bindLookPicker } from './look-picker.js';
 import { PIECE_DEFS } from './pieces.js';
 import { renderHome } from './views/home.js';
+import { renderInsights } from './views/insights.js';
+import { renderGameReview } from './views/gamereview.js';
 import { renderLearnHub, renderLesson } from './views/learn.js';
 import { renderCourseLesson, renderReviewSession } from './views/course.js';
 import { renderReview } from './views/review.js';
@@ -43,6 +48,8 @@ App.views = {
   'puzzle-solve': { render: renderPuzzleSolve, navKey: 'puzzles-hub', focus: true, live: true },
   'play-setup': { render: renderPlaySetup },
   game: { render: renderGame, navKey: 'play-setup', focus: true, live: true },
+  insights: { render: renderInsights, navKey: 'play-setup' },
+  'game-review': { render: renderGameReview, navKey: 'play-setup', focus: true, live: true },
   settings: { render: renderSettings },
   history: { render: renderHistory, navKey: 'home' },
 };
@@ -112,7 +119,19 @@ async function init() {
   });
 }
 
+// Show a scroller's thumb while it is scrolling, then let it fade (styles.css).
+document.addEventListener('scroll', (e) => {
+  const t = e.target === document ? document.documentElement : e.target;
+  if (!t || !t.classList) return;
+  t.classList.add('sb-on');
+  clearTimeout(t._sbTimer);
+  t._sbTimer = setTimeout(() => t.classList.remove('sb-on'), 900);
+}, true);
+
+// iOS Safari ignores user-scalable=no; block its pinch gesture directly.
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault());
+
 // Test hook (Electron end-to-end scripts): set localStorage.knightly_debug = '1'.
-try { if (localStorage.getItem('knightly_debug') === '1') window.__knightly = { App, Sync }; } catch { /* storage blocked */ }
+try { if (localStorage.getItem('knightly_debug') === '1') window.__knightly = { App, Sync, Analysis, engine, ChessBoard }; } catch { /* storage blocked */ }
 
 init();

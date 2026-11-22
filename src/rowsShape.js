@@ -8,6 +8,8 @@
 //   lesson   <course lesson id>   { best, plays, first, last }, merged field by field
 //   review   <ref>                spaced-review item, latest change wins, deleted = learned
 //   event    <id>                 one history entry (never edited)
+//   game     <id>                 one finished game vs the computer: moves, result, review summary
+//                                 (gets updated once when the engine review finishes)
 //   meta     puzzles              { dailyStreak, lastDailyDate }, latest change wins
 //   settings shared               look + daily goal, latest change wins
 //   count    <date>|<device>      that device's counters for that day
@@ -22,7 +24,7 @@
 // client_at (knightly_push in SUPABASE-SETUP.md).
 import { computeStreak } from './streak.js';
 
-export const DEVICE_ONLY_SETTINGS = ['sound', 'miniAlwaysOnTop'];
+export const DEVICE_ONLY_SETTINGS = ['sound', 'miniAlwaysOnTop', 'boardScale'];
 export const HISTORY_SHOWN = 50;
 
 export const rowId = (kind, key) => `${kind}|${key}`;
@@ -62,6 +64,7 @@ export function progressToRows(p, deviceId, at = 1) {
   for (const [id, v] of Object.entries(p.course?.done || {})) put('lesson', id, clone(v));
   for (const [ref, v] of Object.entries(p.review || {})) put('review', ref, clone(v));
   for (const e of p.history || []) put('event', eventKey(e), clone(e));
+  for (const g of p.games || []) put('game', g.id, clone(g));
 
   const counts = {};
   const bump = (day, field, n) => {
@@ -92,6 +95,7 @@ export function rowsToProgress(rows, today) {
     xp: 0,
     record: { wins: 0, losses: 0, draws: 0 },
     history: [],
+    games: [],
     course: { done: {} },
     streak: null,
     streakDays: [],
@@ -112,6 +116,7 @@ export function rowsToProgress(rows, today) {
       case 'lesson': p.course.done[r.key] = clone(d); break;
       case 'review': p.review[r.key] = clone(d); break;
       case 'event': p.history.push(clone(d)); break;
+      case 'game': p.games.push(clone(d)); break;
       case 'count': {
         const day = r.key.split('|')[0];
         p.xp += d.xp || 0;
@@ -133,6 +138,7 @@ export function rowsToProgress(rows, today) {
   }
   p.history.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   p.history = p.history.slice(0, HISTORY_SHOWN);
+  p.games.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   p.streakDays = [...active].sort();
   p.streak = computeStreak(p.streakDays, today, bestBase);
   return p;
@@ -166,6 +172,12 @@ export function diffProgress(prev, next, rows, { deviceId, today }) {
     const k = eventKey(e);
     if (!prevEvents.has(k) && !rows[rowId('event', k)]) set('event', k, clone(e));
   }
+
+  // Games: new, updated (the review summary arrives after the game ends), or removed.
+  const prevGames = Object.fromEntries((prev.games || []).map((g) => [g.id, stable(g)]));
+  const nextIds = new Set((next.games || []).map((g) => g.id));
+  for (const g of next.games || []) if (g.id && prevGames[g.id] !== stable(g)) set('game', g.id, clone(g));
+  for (const id of Object.keys(prevGames)) if (!nextIds.has(id)) set('game', id, {}, true);
 
   // Counters. Only increases count: a screen never takes XP away, and a
   // reset goes through resetWrites() instead.
