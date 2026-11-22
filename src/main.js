@@ -14,6 +14,7 @@ import { bindLookPicker } from './look-picker.js';
 import { PIECE_DEFS } from './pieces.js';
 import { renderHome } from './views/home.js';
 import { renderLearnHub, renderLesson } from './views/learn.js';
+import { renderCourseLesson } from './views/course.js';
 import { renderPuzzlesHub, renderPuzzleSolve } from './views/puzzles.js';
 import { renderPlaySetup } from './views/play.js';
 import { renderGame } from './views/game.js';
@@ -32,6 +33,7 @@ bindLookPicker(App);
 App.views = {
   home: { render: renderHome },
   'learn-hub': { render: renderLearnHub },
+  'course-lesson': { render: renderCourseLesson, navKey: 'learn-hub', focus: true, live: true },
   lesson: { render: renderLesson, navKey: 'learn-hub', focus: true, live: true },
   'puzzles-hub': { render: renderPuzzlesHub },
   'puzzle-solve': { render: renderPuzzleSolve, navKey: 'puzzles-hub', focus: true, live: true },

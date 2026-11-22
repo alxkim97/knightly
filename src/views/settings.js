@@ -35,6 +35,22 @@ export async function renderSettings(container) {
   }
   grid.appendChild(general);
 
+  const GOALS = [[20, 'Casual · 20'], [50, 'Regular · 50'], [100, 'Serious · 100']];
+  const learning = html(`<section class="card pad"><div class="blk-h">Daily goal and streak</div>
+    <div class="seg wrap" role="group" aria-label="Daily XP goal">${GOALS.map(([v, n]) => `<button type="button" data-g="${v}">${n} XP</button>`).join('')}</div>
+    <div class="kv"><span>Keeps the streak</span><b>1 lesson or 10 puzzles</b></div>
+    <div class="kv"><span>Missed a day</span><b>1 freeze per week</b></div>
+    <div class="kv"><span>Lives</span><b>None, unlimited</b></div></section>`);
+  const paintGoal = () => learning.querySelectorAll('[data-g]').forEach((b) => b.classList.toggle('on', Number(b.dataset.g) === (App.settings.dailyGoal || 50)));
+  learning.querySelectorAll('[data-g]').forEach((b) => b.addEventListener('click', () => {
+    App.settings.dailyGoal = Number(b.dataset.g);
+    App.saveSettings();
+    paintGoal();
+    App.refreshChrome();
+  }));
+  paintGoal();
+  grid.appendChild(learning);
+
   grid.appendChild(html(`<section class="card pad"><div class="blk-h">Shortcuts</div>
     <div class="kv"><span>Undo a move vs computer</span><b>Ctrl + Z</b></div>
     <div class="kv"><span>Redo</span><b>Ctrl + Y</b></div>

@@ -1,6 +1,6 @@
 {
   "name": "knightly",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Knightly — learn chess, solve puzzles and play the computer. Web app (PWA) and Windows desktop app from one codebase.",
   "main": "main.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "build:win": "npm run electron:build",
     "fetch-puzzles": "node scripts/fetch-puzzles.js",
     "build-lessons": "node scripts/build-lessons.js",
-    "build-icon": "node scripts/build-icon.js"
+    "build-icon": "node scripts/build-icon.js",
+    "build-course": "node scripts/build-course.js"
   },
   "engines": {
     "node": ">=18"

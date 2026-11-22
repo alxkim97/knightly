@@ -1,55 +1,45 @@
-import { html, esc, ICON } from '../util.js';
+import { html, esc } from '../util.js';
 import { App } from '../app.js';
 import { boardThumb } from '../board.js';
 import { boardFromFen } from '../engine.js';
 import { pieceSVG } from '../pieces.js';
-import {
-  loadLessons, firstIncomplete, CATEGORIES, CATEGORY_LABEL, CATEGORY_DESC, CATEGORY_PIECE,
-  getDailyPuzzle, LEVEL_LABEL, sideToMove,
-} from '../content.js';
+import { loadCourse, courseState, exerciseCount, getDailyPuzzle, LEVEL_LABEL, sideToMove } from '../content.js';
+import { todayXp, streakDoneToday } from '../streak.js';
 import { pageTop, greeting, activityList } from './common.js';
+import { courseUnitCard } from './learn.js';
 import { rankFor } from './side.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-export function unitCard(cat, idx, lessons, completed, nextId) {
-  const list = lessons.filter((l) => l.category === cat);
-  const done = list.filter((l) => completed.has(l.id)).length;
-  const card = html(`<section class="card unit ${list.some((l) => l.id === nextId) ? 'cur' : ''}">
-    <div class="unit-h"><div class="unit-n">${idx + 1}</div><div class="unit-t"><h3>${esc(CATEGORY_LABEL[cat])}</h3><span>${esc(CATEGORY_DESC[cat])}</span></div>
-    <div class="pct">${done}/${list.length}<div class="bar"><i style="width:${list.length ? (done / list.length) * 100 : 0}%"></i></div></div></div>
-    <div class="lessons"></div></section>`);
-  const wrap = card.querySelector('.lessons');
-  list.forEach((l) => {
-    const st = completed.has(l.id) ? 'done' : l.id === nextId ? 'cur' : '';
-    const sub = st === 'done' ? 'Done · replay' : st === 'cur' ? 'Up next' : `${l.steps.length} ${l.steps.length === 1 ? 'move' : 'moves'}`;
-    const b = html(`<button type="button" class="ls ${st}"><span class="g">${st === 'done' ? ICON.check : pieceSVG(st === 'cur' ? 'b' : 'w', CATEGORY_PIECE[cat])}</span><span class="t"><b>${esc(l.title)}</b><span>${esc(sub)}</span></span></button>`);
-    b.addEventListener('click', () => App.navigate('lesson', { lessonId: l.id }));
-    wrap.appendChild(b);
-  });
-  return card;
-}
-
 export async function renderHome(container) {
-  const [progress, lessons] = await Promise.all([App.getProgress(), loadLessons()]);
-  const completed = new Set(progress.lessons?.completedIds || []);
-  const next = firstIncomplete(lessons, completed);
+  const [progress, course] = await Promise.all([App.getProgress(), loadCourse()]);
+  const cs = courseState(course, progress);
+  const next = cs.next;
   const rec = progress.record || { wins: 0, losses: 0, draws: 0 };
   const rank = rankFor(progress.xp || 0);
+  const goal = App.settings.dailyGoal || 50;
+  const xpToday = todayXp(progress);
+  const streak = progress.streak?.current || 0;
 
-  container.appendChild(pageTop(greeting(), `${rank.name} rank · ${progress.xp || 0} XP · ${completed.size} of ${lessons.length} lessons done`));
+  const sub = streak
+    ? `${streak} day streak · ${xpToday}/${goal} XP today${streakDoneToday(progress) ? ' · streak safe' : ' · one lesson keeps it going'}`
+    : `${rank.name} rank · ${xpToday}/${goal} XP today · finish a lesson to start a streak`;
+  container.appendChild(pageTop(greeting(), sub));
 
   const bento = html('<div class="bento"></div>');
 
-  // Up next lesson
+  // Up next
+  const nextUnit = next ? cs.units.find((u) => u.lessons.some((l) => l.id === next.id)) : null;
+  const firstBoard = next ? (next.exercises.find((x) => x.type !== 'explain') || next.exercises[0]).fen : START_FEN;
   const hero = html(`<section class="hero c-hero"><div class="hb"></div><div class="hero-tx">
-    <div class="eyebrow">${next ? `Up next · ${esc(CATEGORY_LABEL[next.category])}` : 'All lessons done'}</div>
-    <h2>${esc(next ? next.title : 'Course complete')}</h2>
-    <p>${esc(next ? next.intro : 'You have finished every lesson. Replay any of them, or sharpen up with puzzles.')}</p>
-    <div class="hero-row"><button type="button" class="btn" id="go">${next ? 'Start lesson' : 'Browse lessons'}</button>${next ? `<span class="meta">${next.steps.length} moves · +15 XP</span>` : ''}</div></div>
-    <div class="hero-deco" aria-hidden="true">${pieceSVG('w', 'n')}</div><div class="px" aria-hidden="true"><i></i><i></i><i></i></div></section>`);
-  hero.querySelector('.hb').appendChild(boardThumb(boardFromFen(next ? next.startFen : START_FEN)));
-  hero.querySelector('#go').addEventListener('click', () => (next ? App.navigate('lesson', { lessonId: next.id }) : App.navigate('learn-hub')));
+    <div class="eyebrow">${next ? `Up next · Unit ${nextUnit.n} · ${esc(nextUnit.title)}` : 'Course complete'}</div>
+    <h2>${esc(next ? next.title : 'Every lesson done')}</h2>
+    <p>${esc(next ? (next.exercises[0].text || next.exercises[0].prompt || '') : 'Replay any lesson for XP, or keep sharp with puzzles.')}</p>
+    <div class="hero-row"><button type="button" class="btn" id="go">${next ? (progress.course?.done && Object.keys(progress.course.done).length ? 'Continue' : 'Start learning') : 'Open Learn'}</button>${
+      next ? `<span class="meta">${exerciseCount(next)} exercises · ~${Math.max(2, Math.round(next.exercises.length * 0.6))} min</span>` : ''}</div></div>
+    <div class="hero-deco" aria-hidden="true">${pieceSVG('w', next?.piece || 'n')}</div><div class="px" aria-hidden="true"><i></i><i></i><i></i></div></section>`);
+  hero.querySelector('.hb').appendChild(boardThumb(boardFromFen(firstBoard), { flipped: sideToMove(firstBoard) === 'b' }));
+  hero.querySelector('#go').addEventListener('click', () => (next ? App.navigate('course-lesson', { lessonId: next.id, from: 'home' }) : App.navigate('learn-hub')));
   bento.appendChild(hero);
 
   // Daily puzzle (fills in when it arrives)
@@ -77,12 +67,25 @@ export async function renderHome(container) {
   play.querySelector('button').addEventListener('click', () => App.navigate('play-setup'));
   bento.appendChild(play);
 
-  // Units
-  CATEGORIES.forEach((cat, i) => {
-    const card = unitCard(cat, i, lessons, completed, next?.id);
-    card.classList.add('c-4');
-    bento.appendChild(card);
+  // Current unit in full, then the whole path at a glance
+  const cur = cs.current;
+  const unitCard = courseUnitCard(cur, { from: 'home' });
+  unitCard.classList.add('c-full');
+  bento.appendChild(unitCard);
+
+  const pathCard = html('<section class="card pad c-full"><div class="blk-h">Your path <a role="button" tabindex="0">Open Learn</a></div><div class="path-strip"></div></section>');
+  const strip = pathCard.querySelector('.path-strip');
+  cs.units.forEach((u) => {
+    const s = html(`<button type="button" class="pstep ${u === cur ? 'cur' : ''} ${u.complete ? 'done' : ''} ${u.unlocked ? '' : 'locked'}">
+      <span class="pn">${u.n}</span><span class="pt"><b>${esc(u.title)}</b><span class="mono">${u.doneCount}/${u.lessons.length}</span></span>
+      <span class="bar"><i style="width:${(u.doneCount / u.lessons.length) * 100}%"></i></span></button>`);
+    s.addEventListener('click', () => App.navigate('learn-hub'));
+    strip.appendChild(s);
   });
+  const open = pathCard.querySelector('a');
+  open.addEventListener('click', () => App.navigate('learn-hub'));
+  open.addEventListener('keydown', (e) => { if (e.key === 'Enter') App.navigate('learn-hub'); });
+  bento.appendChild(pathCard);
 
   // Recent activity
   const act = html('<section class="card pad c-full"><div class="blk-h">Recent activity <a role="button" tabindex="0">View all</a></div></section>');

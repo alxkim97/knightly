@@ -111,3 +111,46 @@ export function getDailyPuzzle() {
 export function sideToMove(fen) {
   return (fen || '').split(' ')[1] === 'b' ? 'b' : 'w';
 }
+
+// ── Course (Learn path) ─────────────────────────────────
+// Built by scripts/build-course.js; every exercise is pre-validated there.
+let courseCache = null;
+export async function loadCourse() {
+  if (courseCache) return courseCache;
+  const res = await fetch('data/course.json');
+  courseCache = await res.json();
+  return courseCache;
+}
+
+export function findCourseLesson(course, id) {
+  for (const u of course.units) {
+    const i = u.lessons.findIndex((l) => l.id === id);
+    if (i >= 0) return { unit: u, lesson: u.lessons[i], index: i };
+  }
+  return null;
+}
+
+// Unlock rules: unit 1 is open. A unit opens once the previous unit's
+// checkpoint is passed (or all its lessons are done). Inside an open unit
+// every lesson is available, in any order, as often as you like.
+export function courseState(course, progress) {
+  const done = (progress.course && progress.course.done) || {};
+  let prevComplete = true;
+  let next = null;
+  const units = course.units.map((u) => {
+    const unlocked = prevComplete;
+    const lessons = u.lessons.map((l) => ({ ...l, done: !!done[l.id], state: !unlocked ? 'locked' : done[l.id] ? 'done' : 'open' }));
+    const doneCount = lessons.filter((l) => l.done).length;
+    const checkpoint = lessons.find((l) => l.checkpoint);
+    const complete = doneCount === lessons.length || (checkpoint && checkpoint.done);
+    if (unlocked && !next) next = lessons.find((l) => !l.done) || null;
+    prevComplete = unlocked && complete;
+    return { ...u, unlocked, complete, doneCount, lessons };
+  });
+  if (next) units.forEach((u) => u.lessons.forEach((l) => { if (l.id === next.id) l.state = 'next'; }));
+  return { units, next, current: units.find((u) => u.lessons.some((l) => l.id === next?.id)) || units[units.length - 1] };
+}
+
+export function exerciseCount(lesson) {
+  return lesson.exercises.filter((x) => x.type !== 'explain').length;
+}

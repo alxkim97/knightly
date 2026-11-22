@@ -7,6 +7,7 @@ import { pieceSVG } from '../pieces.js';
 import { platform } from '../platform.js';
 import { loadPuzzleBank, getDailyPuzzle, LEVELS, LEVEL_LABEL, sideToMove } from '../content.js';
 import { pageTop, backLink } from './common.js';
+import { dayKey, PUZZLES_FOR_STREAK } from '../streak.js';
 
 const PUZZLE_ID = 'puzzle';
 const PAGE = 24;
@@ -162,11 +163,17 @@ export function renderPuzzleSolve(container, params) {
           progress.puzzles.lastDailyDate = today;
         }
       }
-      App.saveProgress(progress).then(() => {
-        if (firstTime) {
-          App.addXp(10);
-          App.addHistoryEntry({ type: 'puzzle', level: puzzle.level, rating: puzzle.rating });
-        }
+      // 10 new puzzles in a day also keep the streak alive.
+      if (firstTime) {
+        const today = dayKey();
+        if (!progress.puzzleDay || progress.puzzleDay.date !== today) progress.puzzleDay = { date: today, n: 0 };
+        progress.puzzleDay.n++;
+      }
+      App.saveProgress(progress).then(async () => {
+        if (!firstTime) return;
+        App.addXp(10);
+        App.addHistoryEntry({ type: 'puzzle', level: puzzle.level, rating: puzzle.rating });
+        if (progress.puzzleDay.n >= PUZZLES_FOR_STREAK && await App.markStreakDay()) showToast(`${PUZZLES_FOR_STREAK} puzzles today: streak extended`);
       });
     });
   }

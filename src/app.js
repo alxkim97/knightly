@@ -8,6 +8,7 @@ import { applyLook, LOOK_DEFAULTS } from './theme.js';
 import { brandKnightSVG } from './pieces.js';
 import { lookPicker } from './look-picker.js';
 import { liveBoards } from './board.js';
+import { addDayXp, markStreakDay, normalizeStreak, todayXp } from './streak.js';
 
 const NAV = [
   ['home', 'Home'],
@@ -19,7 +20,7 @@ const NAV = [
 const NAV_ICON = { home: ICON.home, 'learn-hub': ICON.learn, 'puzzles-hub': ICON.puzzles, 'play-setup': ICON.play, settings: ICON.settings };
 
 export const App = {
-  settings: { ...LOOK_DEFAULTS, sound: true, miniAlwaysOnTop: true },
+  settings: { ...LOOK_DEFAULTS, sound: true, miniAlwaysOnTop: true, dailyGoal: 50 },
   views: {},
   current: null, // { name, params }
   _progressCache: null,
@@ -33,6 +34,12 @@ export const App = {
       xp: 0,
       record: { wins: 0, losses: 0, draws: 0 },
       history: [],
+      course: { done: {} },        // lessonId -> { best, plays, first, last }
+      streak: { current: 0, best: 0, last: null, freezeWeek: null },
+      streakDays: [],
+      days: {},                    // 'YYYY-MM-DD' -> XP earned that day
+      puzzleDay: { date: null, n: 0 },
+      missed: [],                  // exercise refs answered wrong (Review, phase 4)
     };
   },
 
@@ -41,6 +48,7 @@ export const App = {
     if (App._progressCache) return App._progressCache;
     const stored = await platform.getProgress();
     App._progressCache = { ...App.defaultProgress(), ...(stored || {}) };
+    if (normalizeStreak(App._progressCache)) platform.setProgress(App._progressCache);
     return App._progressCache;
   },
   async saveProgress(progress) {
@@ -49,10 +57,27 @@ export const App = {
   },
   async addXp(amount) {
     const progress = await App.getProgress();
+    const before = todayXp(progress);
     progress.xp = (progress.xp || 0) + amount;
+    addDayXp(progress, amount);
     await App.saveProgress(progress);
     App.refreshChrome();
-    return progress.xp;
+    const goal = App.settings.dailyGoal || 50;
+    return { total: progress.xp, goalReached: before < goal && todayXp(progress) >= goal };
+  },
+  // Count today toward the streak; true the first time each day.
+  async markStreakDay() {
+    const progress = await App.getProgress();
+    const extended = markStreakDay(progress);
+    if (extended) { await App.saveProgress(progress); App.refreshChrome(); }
+    return extended;
+  },
+  async recordMiss(ref) {
+    const progress = await App.getProgress();
+    progress.missed = (progress.missed || []).filter((m) => m.ref !== ref);
+    progress.missed.push({ ref, at: new Date().toISOString() });
+    progress.missed = progress.missed.slice(-200);
+    await App.saveProgress(progress);
   },
   async addHistoryEntry(entry) {
     const progress = await App.getProgress();
@@ -157,7 +182,7 @@ export const App = {
   async refreshChrome() {
     const progress = await App.getProgress();
     const xpChip = document.getElementById('tb-xp');
-    if (xpChip) xpChip.innerHTML = ICON.bolt + (progress.xp || 0);
+    if (xpChip) xpChip.innerHTML = ICON.flame + (progress.streak?.current || 0);
     const side = document.getElementById('side');
     if (side && App.sideRenderer && !document.querySelector('.shell').classList.contains('focus')) {
       App.sideRenderer(side, progress);

@@ -12,6 +12,10 @@ export class ChessBoard {
     this.onPremove = opts.onPremove || (() => {});
     this.onPremoveClear = opts.onPremoveClear || (() => {});
     this.premoveColor = opts.premoveColor || null;
+    // Learn exercises: tap-a-square mode (bypasses piece selection) and
+    // per-square marks { e4: 'hl' | 'dot' | 'good' | 'bad' | 'pick' }.
+    this.onSquareClick = opts.onSquareClick || null;
+    this.marks = {};
     this.flipped = !!opts.flipped;
     this.selected = null;
     this.legalTargets = [];
@@ -108,6 +112,11 @@ export class ChessBoard {
   _onPointerDown(e) {
     const square = this._squareFromPoint(e.clientX, e.clientY);
     if (!square || !this.state) return;
+
+    if (this.onSquareClick) {
+      if (e.button === 0) this.onSquareClick(square);
+      return;
+    }
 
     if (e.button === 2) {
       e.preventDefault();
@@ -383,6 +392,16 @@ export class ChessBoard {
     }
   }
 
+  setMarks(marks) {
+    this.marks = marks || {};
+    this._paint();
+  }
+
+  setArrows(arrows) {
+    this.annotations.arrows = (arrows || []).map(([from, to]) => ({ from, to }));
+    this._paintAnnotations();
+  }
+
   render(state) {
     this.state = state;
     this.lastMove = state.history && state.history.length
@@ -397,8 +416,10 @@ export class ChessBoard {
   _paint() {
     for (const square of Object.keys(this.squareEls)) {
       const sqEl = this.squareEls[square];
-      sqEl.classList.remove('selected', 'last-from', 'last-to', 'in-check', 'legal-dot', 'legal-capture', 'suggest-from', 'suggest-to', 'premove-from', 'premove-to');
+      sqEl.classList.remove('selected', 'last-from', 'last-to', 'in-check', 'legal-dot', 'legal-capture', 'suggest-from', 'suggest-to', 'premove-from', 'premove-to', 'mark-hl', 'mark-dot', 'mark-good', 'mark-bad', 'mark-pick');
       sqEl.querySelectorAll('.piece').forEach((p) => p.remove());
+      const mark = this.marks[square];
+      if (mark) sqEl.classList.add('mark-' + mark);
     }
     if (!this.state) return;
 

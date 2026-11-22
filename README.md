@@ -4,6 +4,8 @@ Learn chess, solve puzzles and play the computer. One codebase builds both a
 web app (installable PWA, hosted on Vercel) and the Windows desktop app
 (Electron, with the pop-out mini board).
 
+**Learn** is a path of 5 units and 27 short lessons (tap a square, pick an answer, make the move, play a line). No lives: practise as much as you like. A lesson a day, or 10 puzzles, keeps your streak; one missed day a week is covered by a freeze.
+
 Nine looks (Strategy Night by default), five piece sets, piece and board
 colour options — all under **Look** in the sidebar or in **Settings**.
 
@@ -24,7 +26,8 @@ Content pipeline scripts (run as needed):
 | Command | What it does |
 |---|---|
 | `npm run fetch-puzzles` | Refresh `public/data/puzzles.json` from Lichess |
-| `npm run build-lessons` | Rebuild `public/data/lessons.json` (every move checked with chess.js) |
+| `npm run build-course` | Rebuild `public/data/course.json`, the Learn path (every position, move and answer checked with chess.js) |
+| `npm run build-lessons` | Rebuild `public/data/lessons.json`, the classic lines (every move checked with chess.js) |
 | `npm run build-icon` | Regenerate desktop and web app icons |
 
 ## Layout
