@@ -1,6 +1,6 @@
 {
   "name": "knightly",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Knightly — learn chess, solve puzzles and play the computer. Web app (PWA) and Windows desktop app from one codebase.",
   "main": "main.js",
   "scripts": {
