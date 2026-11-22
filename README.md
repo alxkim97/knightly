@@ -6,6 +6,8 @@ web app (installable PWA, hosted on Vercel) and the Windows desktop app
 
 **Learn** is a path of 5 units and 27 short lessons (tap a square, pick an answer, make the move, play a line). No lives: practise as much as you like. A lesson a day, or 10 puzzles, keeps your streak; one missed day a week is covered by a freeze.
 
+**Review** brings back anything you got wrong, in a lesson or a puzzle, after 1, 3, 7 and 21 days. Right first time moves it to the next gap; after the last one it counts as learned.
+
 Nine looks (Strategy Night by default), five piece sets, piece and board
 colour options — all under **Look** in the sidebar or in **Settings**.
 

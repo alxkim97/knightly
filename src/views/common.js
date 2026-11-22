@@ -41,6 +41,7 @@ export function describeEntry(e) {
     return { tone, mark, title: `${word} · ${who}`, sub: formatDate(e.date) };
   }
   if (e.type === 'puzzle') return { tone: 'g', mark: '✓', title: `Puzzle solved · ${e.rating ?? '?'}`, sub: formatDate(e.date) };
+  if (e.type === 'review') return { tone: e.correct === e.count ? 'g' : 'y', mark: '↻', title: `Review · ${e.correct}/${e.count} right first time`, sub: formatDate(e.date) };
   if (e.type === 'lesson') return { tone: 'g', mark: '✓', title: `Lesson · ${e.title || ''}`, sub: formatDate(e.date) };
   return { tone: '', mark: '•', title: e.type || 'Activity', sub: formatDate(e.date) };
 }

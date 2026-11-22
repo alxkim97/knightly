@@ -9,15 +9,17 @@ import { brandKnightSVG } from './pieces.js';
 import { lookPicker } from './look-picker.js';
 import { liveBoards } from './board.js';
 import { addDayXp, markStreakDay, normalizeStreak, todayXp } from './streak.js';
+import { ensureReview, addMiss, reviewResult, dueCount } from './review.js';
 
 const NAV = [
   ['home', 'Home'],
   ['learn-hub', 'Learn'],
+  ['review', 'Review'],
   ['puzzles-hub', 'Puzzles'],
   ['play-setup', 'Play'],
   ['settings', 'Settings'],
 ];
-const NAV_ICON = { home: ICON.home, 'learn-hub': ICON.learn, 'puzzles-hub': ICON.puzzles, 'play-setup': ICON.play, settings: ICON.settings };
+const NAV_ICON = { home: ICON.home, 'learn-hub': ICON.learn, review: ICON.review, 'puzzles-hub': ICON.puzzles, 'play-setup': ICON.play, settings: ICON.settings };
 
 export const App = {
   settings: { ...LOOK_DEFAULTS, sound: true, miniAlwaysOnTop: true, dailyGoal: 50 },
@@ -39,7 +41,8 @@ export const App = {
       streakDays: [],
       days: {},                    // 'YYYY-MM-DD' -> XP earned that day
       puzzleDay: { date: null, n: 0 },
-      missed: [],                  // exercise refs answered wrong (Review, phase 4)
+      review: {},                  // ref -> spaced-review schedule (src/review.js)
+      reviewStats: { done: 0, learned: 0 },
     };
   },
 
@@ -48,7 +51,8 @@ export const App = {
     if (App._progressCache) return App._progressCache;
     const stored = await platform.getProgress();
     App._progressCache = { ...App.defaultProgress(), ...(stored || {}) };
-    if (normalizeStreak(App._progressCache)) platform.setProgress(App._progressCache);
+    const migrated = ensureReview(App._progressCache);
+    if (normalizeStreak(App._progressCache) || migrated) platform.setProgress(App._progressCache);
     return App._progressCache;
   },
   async saveProgress(progress) {
@@ -72,12 +76,19 @@ export const App = {
     if (extended) { await App.saveProgress(progress); App.refreshChrome(); }
     return extended;
   },
-  async recordMiss(ref) {
+  // Something answered wrong: schedule it for Review (back in 1 day).
+  async recordMiss(ref, data) {
     const progress = await App.getProgress();
-    progress.missed = (progress.missed || []).filter((m) => m.ref !== ref);
-    progress.missed.push({ ref, at: new Date().toISOString() });
-    progress.missed = progress.missed.slice(-200);
+    addMiss(progress, ref, data);
     await App.saveProgress(progress);
+    App.refreshChrome();
+  },
+  // A review item answered: firstTry decides advance vs. back to day 1.
+  async recordReview(ref, firstTry) {
+    const progress = await App.getProgress();
+    const outcome = reviewResult(progress, ref, firstTry);
+    await App.saveProgress(progress);
+    return outcome;
   },
   async addHistoryEntry(entry) {
     const progress = await App.getProgress();
@@ -183,6 +194,13 @@ export const App = {
     const progress = await App.getProgress();
     const xpChip = document.getElementById('tb-xp');
     if (xpChip) xpChip.innerHTML = ICON.flame + (progress.streak?.current || 0);
+    const due = dueCount(progress);
+    document.querySelectorAll('[data-nav="review"]').forEach((b) => {
+      let badge = b.querySelector('.count');
+      if (!due) { if (badge) badge.remove(); return; }
+      if (!badge) { badge = document.createElement('span'); badge.className = 'count'; b.appendChild(badge); }
+      badge.textContent = due;
+    });
     const side = document.getElementById('side');
     if (side && App.sideRenderer && !document.querySelector('.shell').classList.contains('focus')) {
       App.sideRenderer(side, progress);

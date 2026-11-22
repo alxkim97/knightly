@@ -1,4 +1,5 @@
-import { html, esc } from '../util.js';
+import { html, esc, ICON } from '../util.js';
+import { dueCount } from '../review.js';
 import { App } from '../app.js';
 import { boardThumb } from '../board.js';
 import { boardFromFen } from '../engine.js';
@@ -66,6 +67,14 @@ export async function renderHome(container) {
   play.querySelector('.fb').appendChild(boardThumb(boardFromFen(START_FEN)));
   play.querySelector('button').addEventListener('click', () => App.navigate('play-setup'));
   bento.appendChild(play);
+
+  // Review reminder, only when something is due
+  const due = dueCount(progress);
+  if (due) {
+    const banner = html(`<section class="card review-banner c-full"><span class="rb-ic">${ICON.review}</span><div class="rb-tx"><b>${due} position${due === 1 ? '' : 's'} due for review</b><span>Mistakes come back on a schedule until they stick. A review session also keeps your streak.</span></div><button type="button" class="btn sm">Review now</button></section>`);
+    banner.querySelector('button').addEventListener('click', () => App.navigate('review'));
+    bento.appendChild(banner);
+  }
 
   // Current unit in full, then the whole path at a glance
   const cur = cs.current;

@@ -2,7 +2,7 @@ import { html } from '../util.js';
 import { App } from '../app.js';
 import { pageTop, backLink, activityList } from './common.js';
 
-const FILTERS = [['all', 'All'], ['game', 'Games'], ['puzzle', 'Puzzles'], ['lesson', 'Lessons']];
+const FILTERS = [['all', 'All'], ['game', 'Games'], ['puzzle', 'Puzzles'], ['lesson', 'Lessons'], ['review', 'Reviews']];
 
 export async function renderHistory(container) {
   const progress = await App.getProgress();

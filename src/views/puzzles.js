@@ -107,6 +107,14 @@ export function renderPuzzleSolve(container, params) {
   let solIdx = 0;
   let solved = false;
   let locked = false;
+  let reviewQueued = false;
+  // A wrong move or "Show solution" schedules this puzzle for Review.
+  function queueForReview() {
+    if (reviewQueued) return;
+    reviewQueued = true;
+    const { id, fen, solution, rating, themes, level } = puzzle;
+    App.recordMiss('pz:' + id, { fen, solution, rating, themes, level });
+  }
 
   const board = new ChessBoard(layout.querySelector('.board-wrap'), { interactive: true, flipped, onUserMove: handleMove });
   board.render(state);
@@ -183,7 +191,8 @@ export function renderPuzzleSolve(container, params) {
     if (state.turn !== solverColor) return;
     if (puzzle.solution[solIdx] !== uciOf(from, to, promotion)) {
       Sound.play('error');
-      setStatus('Not quite. Try again.', 'bad');
+      queueForReview();
+      setStatus('Not quite. Try again. This one will come back in Review.', 'bad');
       board.clearSelection();
       return;
     }
@@ -217,6 +226,7 @@ export function renderPuzzleSolve(container, params) {
 
   layout.querySelector('#solution').addEventListener('click', () => {
     if (solved) return;
+    queueForReview();
     locked = true;
     board.interactive = false;
     const step = () => {

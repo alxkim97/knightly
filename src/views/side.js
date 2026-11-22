@@ -4,6 +4,7 @@ import { App } from '../app.js';
 import { loadCourse, courseState } from '../content.js';
 import { pieceSVG } from '../pieces.js';
 import { todayXp, weekStrip, streakDoneToday, PUZZLES_FOR_STREAK, dayKey } from '../streak.js';
+import { dueCount } from '../review.js';
 
 // Rank ladder by total XP, pawn to king.
 const RANKS = [
@@ -57,7 +58,7 @@ export async function renderSide(side, progress) {
     <div class="kv"><span>Lessons done</span><b>${lessonsDone}/${lessonsTotal}</b></div>
     <div class="kv"><span>Puzzles solved</span><b>${(progress.puzzles?.solvedIds || []).length}</b></div>
     <div class="kv"><span>vs Computer</span><b>${rec.wins}W ${rec.draws}D ${rec.losses}L</b></div>
-    <div class="kv"><span>To review</span><b>${(progress.missed || []).length}</b></div>
+    <div class="kv"><span>Due for review</span><b>${dueCount(progress)}</b></div>
   </section>`));
 }
 
