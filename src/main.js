@@ -9,6 +9,7 @@ import './styles.css';
 
 import { App, buildShell } from './app.js';
 import { platform } from './platform.js';
+import * as Sync from './sync.js';
 import { applyLook, migrateLook } from './theme.js';
 import { bindLookPicker } from './look-picker.js';
 import { PIECE_DEFS } from './pieces.js';
@@ -72,7 +73,7 @@ async function init() {
   const before = JSON.stringify(stored || {});
   App.settings = migrateLook({ ...App.settings, ...(stored || {}) });
   applyLook(App.settings);
-  if (JSON.stringify(App.settings) !== before) App.saveSettings();
+  if (JSON.stringify(App.settings) !== before) platform.setSettings(App.settings); // local only: a migration isn't a change to sync
 
   buildShell();
 
@@ -92,6 +93,26 @@ async function init() {
 
   App.navigate('home');
   registerServiceWorker();
+
+  Sync.start({
+    ready: () => App.getProgress(),
+    // Another device changed something: progress is already updated in place.
+    onRemote({ settings }) {
+      if (settings) {
+        Object.assign(App.settings, settings);
+        applyLook(App.settings);
+        platform.setSettings(App.settings);
+        App.onLookChanged(); // repaints live boards, re-renders static views
+        return;
+      }
+      const view = App.current && App.views[App.current.name];
+      if (view && !view.live) App.navigate(App.current.name, App.current.params, { keepScroll: true });
+      else App.refreshChrome();
+    },
+  });
 }
+
+// Test hook (Electron end-to-end scripts): set localStorage.knightly_debug = '1'.
+try { if (localStorage.getItem('knightly_debug') === '1') window.__knightly = { App, Sync }; } catch { /* storage blocked */ }
 
 init();

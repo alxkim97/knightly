@@ -175,6 +175,12 @@ p { margin:0; }
 .seg.wrap button + button { border-left:0; }
 .status-line { font-size:14px; font-weight:600; }
 .status-line.good { color:var(--good); } .status-line.bad { color:var(--bad); } .status-line.warn { color:var(--hot); }
+.acct-form { display:grid; gap:8px; margin-top:10px; }
+.acct-form .btn { justify-self:start; }
+.acct .status-line { margin:8px 0; }
+.field { width:100%; border:var(--bw) solid var(--line); border-radius:var(--rs); background:var(--surface2); color:var(--ink); padding:9px 11px; font:inherit; font-size:14px; }
+.field::placeholder { color:var(--text3); }
+.field:focus { outline:2px solid var(--accent); outline-offset:1px; }
 .kv { display:flex; justify-content:space-between; align-items:baseline; padding:6px 0; border-top:1px solid var(--line-soft); font-size:13px; gap:8px; }
 .kv:first-of-type { border-top:0; padding-top:0; }
 .kv b { font-family:var(--fm); font-weight:700; text-align:right; }

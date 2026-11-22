@@ -24,40 +24,57 @@ function weekKey(key) {
 export const PUZZLES_FOR_STREAK = 10;
 
 function ensure(p) {
-  p.streak = p.streak || { current: 0, best: 0, last: null, freezeWeek: null };
+  p.streak = p.streak || { current: 0, best: 0, last: null, frozenDays: [] };
   p.streakDays = p.streakDays || [];
   p.days = p.days || {};
   return p.streak;
 }
 
-// Bring the streak up to date with today. Returns true if anything changed
-// (a freeze was used or the streak broke) so the caller can save.
+// The streak is never stored on its own: it is worked out from the set of
+// days you were active, so every synced device gets the same answer.
+// Walking back from today (or yesterday, if today isn't done yet), a single
+// missed day between two active days is covered by a freeze, once per week.
+export function computeStreak(activeDays, today = dayKey(), bestBase = 0) {
+  const active = new Set(activeDays);
+  let d = active.has(today) ? today : addDays(today, -1);
+  let current = 0, last = null;
+  const frozenDays = [];
+  const usedWeeks = new Set();
+  for (let guard = 0; guard < 5000; guard++) {
+    if (active.has(d)) { current++; if (!last) last = d; d = addDays(d, -1); continue; }
+    const prev = addDays(d, -1);
+    if (active.has(prev) && !usedWeeks.has(weekKey(d))) { usedWeeks.add(weekKey(d)); frozenDays.push(d); d = prev; continue; }
+    break;
+  }
+  if (!current) frozenDays.length = 0;
+  let best = Math.max(bestBase || 0, current), run = 0, prevDay = null, used = new Set();
+  for (const day of [...active].sort()) {
+    if (prevDay && day === addDays(prevDay, 1)) run++;
+    else if (prevDay && day === addDays(prevDay, 2) && !used.has(weekKey(addDays(prevDay, 1)))) { used.add(weekKey(addDays(prevDay, 1))); run++; }
+    else { run = 1; used = new Set(); }
+    best = Math.max(best, run);
+    prevDay = day;
+  }
+  return { current, best, last: last || [...active].sort().pop() || null, frozenDays };
+}
+
+// Bring p.streak up to date with today. Returns true if it changed.
 export function normalizeStreak(p) {
   const s = ensure(p);
-  const today = dayKey();
-  if (!s.last || !s.current) return false;
-  if (s.last === today || s.last === addDays(today, -1)) return false;
-  if (s.last === addDays(today, -2) && s.freezeWeek !== weekKey(today)) {
-    s.freezeWeek = weekKey(today);
-    s.frozen = addDays(today, -1);
-    s.last = addDays(today, -1);
-    return true;
-  }
-  s.current = 0;
-  return true;
+  const next = computeStreak(p.streakDays, dayKey(), s.best);
+  const changed = JSON.stringify(next) !== JSON.stringify({ current: s.current, best: s.best, last: s.last, frozenDays: s.frozenDays });
+  p.streak = next;
+  return changed;
 }
 
 // Count today toward the streak. Returns true the first time per day.
 export function markStreakDay(p) {
-  normalizeStreak(p);
-  const s = p.streak;
+  ensure(p);
   const today = dayKey();
-  if (s.last === today) return false;
-  s.current = s.last === addDays(today, -1) ? (s.current || 0) + 1 : 1;
-  s.best = Math.max(s.best || 0, s.current);
-  s.last = today;
-  if (!p.streakDays.includes(today)) p.streakDays.push(today);
-  p.streakDays = p.streakDays.slice(-60);
+  if (p.streakDays.includes(today)) return false;
+  p.streakDays.push(today);
+  p.streakDays.sort();
+  normalizeStreak(p);
   return true;
 }
 
@@ -71,7 +88,7 @@ export function addDayXp(p, amount) {
 
 export function todayXp(p) { return (p.days || {})[dayKey()] || 0; }
 
-export function streakDoneToday(p) { return !!p.streak && p.streak.last === dayKey(); }
+export function streakDoneToday(p) { return (p.streakDays || []).includes(dayKey()); }
 
 // Mon..Sun of the current week with state per day.
 export function weekStrip(p) {
@@ -83,7 +100,7 @@ export function weekStrip(p) {
     return {
       key, label,
       hit: p.streakDays.includes(key),
-      frozen: p.streak.frozen === key,
+      frozen: (p.streak.frozenDays || []).includes(key),
       today: key === today,
       future: key > today,
       xp: p.days[key] || 0,

@@ -3,13 +3,14 @@
 // wide screens). Views register themselves from main.js so this module has
 // no import cycle with them.
 import { platform } from './platform.js';
+import * as Sync from './sync.js';
 import { html, ICON } from './util.js';
 import { applyLook, LOOK_DEFAULTS } from './theme.js';
 import { brandKnightSVG } from './pieces.js';
 import { lookPicker } from './look-picker.js';
 import { liveBoards } from './board.js';
 import { addDayXp, markStreakDay, normalizeStreak, todayXp } from './streak.js';
-import { ensureReview, addMiss, reviewResult, dueCount } from './review.js';
+import { addMiss, reviewResult, dueCount } from './review.js';
 
 const NAV = [
   ['home', 'Home'],
@@ -47,17 +48,25 @@ export const App = {
   },
 
   // ── Progress ──────────────────────────────────────────
+  // One progress object for the whole session (src/sync.js keeps it current
+  // with other devices). Screens read it, change it, then saveProgress().
   async getProgress() {
-    if (App._progressCache) return App._progressCache;
-    const stored = await platform.getProgress();
-    App._progressCache = { ...App.defaultProgress(), ...(stored || {}) };
-    const migrated = ensureReview(App._progressCache);
-    if (normalizeStreak(App._progressCache) || migrated) platform.setProgress(App._progressCache);
-    return App._progressCache;
+    if (App._progressCache) { normalizeStreak(App._progressCache); return App._progressCache; }
+    if (!App._progressLoading) {
+      App._progressLoading = platform.getProgress().then((stored) => {
+        App._progressCache = Sync.load(stored, App.defaultProgress());
+        return App._progressCache;
+      });
+    }
+    return App._progressLoading;
   },
-  async saveProgress(progress) {
-    App._progressCache = progress;
-    await platform.setProgress(progress);
+  saveProgress(progress) {
+    return Sync.commit(progress);
+  },
+  // Settings -> Reset progress: everything except settings, on every synced device.
+  async resetProgress() {
+    await App.getProgress();
+    await Sync.reset();
   },
   async addXp(amount) {
     const progress = await App.getProgress();
@@ -93,7 +102,7 @@ export const App = {
   async addHistoryEntry(entry) {
     const progress = await App.getProgress();
     progress.history = progress.history || [];
-    progress.history.unshift({ date: new Date().toISOString(), ...entry });
+    progress.history.unshift({ id: Sync.newId(), date: new Date().toISOString(), ...entry });
     progress.history = progress.history.slice(0, 50);
     await App.saveProgress(progress);
   },
@@ -109,6 +118,8 @@ export const App = {
   // ── Settings / look ───────────────────────────────────
   async saveSettings() {
     await platform.setSettings(App.settings);
+    await App.getProgress();
+    Sync.commitSettings(App.settings); // look + daily goal; sound and pop-out pin stay per device
   },
   setLook(patch) {
     Object.assign(App.settings, patch);
