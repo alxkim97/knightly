@@ -2,15 +2,14 @@
 
 Chess app: learn (Duolingo-style path), puzzles, play vs Stockfish. One codebase builds a **web app (PWA, Vercel)** and a **Windows desktop app (Electron)**. Owner: Alex. Working style: discuss the plan before building, then build and verify; commit only when asked.
 
-## Status (v2.3.0, branch `v2-web`, not pushed or merged into `main`)
-- Phases 1-4 committed (201e43d, 99eb00f, 1d803c4). **Phase 5 Supabase sync: code written, uncommitted.**
-  - Signed-out behaviour verified in Electron. Row logic has unit tests (`npm test`).
-  - **Not yet verified against the real cloud:** Alex has to run the SQL in `SUPABASE-SETUP.md` first. Then run the two-device test (see Testing).
+## Status (v2.3.0, branch `v2-web`, pushed to GitHub, not merged into `main`)
+- Phases 1-5 committed (phase 5 = f90d645). Sync verified end to end: two-device test against the WorkLog project passed (live updates, settings, offline merge, deletes).
+- `SUPABASE-SETUP.md` SQL has been run in the WorkLog project. Gotchas hit: run it in the **worklog** project (not lifelog) and it needs the `grant ... to authenticated` line (new tables aren't exposed to the API without it).
 - Sync design: one table `knightly_items` (user_id, kind, key, data, deleted, client_at, updated_at) in the **WorkLog Supabase project** (`uhlbrxyvhfmfeakckzlu`, same as Vetted).
   - RLS: own rows only, not worklog_members.
   - `knightly_push(items)` RPC: the server keeps the row with the highest client_at.
   - Realtime on the table, plus a catch-up pull by updated_at.
-- Next: SQL run, then two-device e2e, commit. Then Vercel: push `v2-web`, Alex imports the GitHub repo in the Vercel dashboard (no Vercel CLI on this PC; Coin/NutriLog deploy via GitHub). Password sign-in needs no Supabase redirect URLs.
+- Next: Alex imports the GitHub repo in Vercel (branch `v2-web`; no Vercel CLI on this PC), rebuilds desktop (`npm run electron:build`, installer still untested), signs in on real devices (first sign-in uploads local progress). Then merge `v2-web` into `main`.
 
 ## Commands
 `npm run dev` (web dev server) · `npm run build` (-> `dist/`, what Vercel runs) · `npm run preview` · `npm start` (build + desktop) · `npm run electron:dev` · `npm run electron:build` (installer -> `release/`) · `npm run build-course` (validates + writes `public/data/course.json`) · `npm test` (row/sync unit tests, node:test) · `build-lessons`, `fetch-puzzles`, `build-icon`.
